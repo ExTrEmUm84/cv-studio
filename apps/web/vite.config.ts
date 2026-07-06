@@ -29,6 +29,7 @@ const serverProxy = serverPaths.reduce(
 
 export default defineConfig({
 	envDir: workspaceRoot,
+	base: process.env.VITE_BASE_PATH ?? "/",
 
 	resolve: {
 		tsconfigPaths: true,
