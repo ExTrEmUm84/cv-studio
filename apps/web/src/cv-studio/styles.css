@@ -723,14 +723,21 @@
 }
 .cv-layout-chip {
 	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 7px 9px;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 7px;
+	padding: 8px 9px;
 	border-radius: 10px;
 	background: #223141;
 	border: 1px solid rgba(255, 255, 255, 0.07);
 	color: #eaf1f8;
 	font-size: 13px;
+}
+.cv-layout-chip-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
 }
 .cv-layout-chip.dragging {
 	box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
@@ -748,18 +755,20 @@
 }
 .cv-layout-chip-label {
 	flex: 1;
+	min-width: 0;
 	font-weight: 600;
+	overflow-wrap: anywhere;
 }
 .cv-layout-mode {
+	width: 100%;
 	border: 1px solid rgba(255, 255, 255, 0.16);
 	background: #16202b;
 	color: #cfe0ef;
-	font-size: 10.5px;
+	font-size: 11px;
 	font-weight: 700;
-	padding: 3px 6px;
+	padding: 4px 6px;
 	border-radius: 8px;
 	cursor: pointer;
-	max-width: 104px;
 }
 .cv-layout-width {
 	margin-top: 4px;

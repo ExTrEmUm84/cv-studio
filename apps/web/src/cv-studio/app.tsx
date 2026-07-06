@@ -159,10 +159,12 @@ function SectionChip({
 			className="cv-layout-chip"
 			style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
 		>
-			<span className="cv-layout-grip" {...attributes} {...listeners} title="Déplacer la section">
-				⠿
-			</span>
-			<span className="cv-layout-chip-label">{SECTION_LABELS[id]}</span>
+			<div className="cv-layout-chip-head">
+				<span className="cv-layout-grip" {...attributes} {...listeners} title="Déplacer la section">
+					⠿
+				</span>
+				<span className="cv-layout-chip-label">{SECTION_LABELS[id]}</span>
+			</div>
 			<select
 				className="cv-layout-mode"
 				value={mode}
