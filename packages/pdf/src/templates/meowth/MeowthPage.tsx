@@ -7,6 +7,7 @@ import { Image, Page, StyleSheet, View } from "#react-pdf-renderer";
 import { useRender } from "../../context";
 import { createBaseTemplateStyles } from "../shared/base-template-styles";
 import {
+	AgeContactItem,
 	CustomFieldContactItem,
 	EmailContactItem,
 	LocationContactItem,
@@ -99,6 +100,7 @@ const Header = ({ styles }: MeowthHeaderProps) => {
 					<EmailContactItem email={basics.email} style={styles.contactItem} />
 					<PhoneContactItem phone={basics.phone} style={styles.contactItem} />
 					<LocationContactItem location={basics.location} style={styles.contactItem} />
+					<AgeContactItem age={basics.age} style={styles.contactItem} />
 					<WebsiteContactItem website={basics.website} style={styles.contactItem} />
 					{basics.customFields.map((field) => (
 						<CustomFieldContactItem key={field.id} field={field} style={styles.contactItem} />

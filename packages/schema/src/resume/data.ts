@@ -40,7 +40,7 @@ export const pictureSchema = z.object({
 	size: z
 		.number()
 		.min(32)
-		.max(512)
+		.max(1024)
 		.describe("The size of the picture to display on the resume, defined in points (pt)."),
 	rotation: z
 		.number()
@@ -85,6 +85,7 @@ export const customFieldSchema = z.object({
 export const basicsSchema = z.object({
 	name: z.string().describe("The full name of the author of the resume."),
 	headline: z.string().describe("The headline of the author of the resume."),
+	age: z.string().catch("").describe("The age of the author of the resume."),
 	email: z.string().describe("The email address of the author of the resume."),
 	phone: z.string().describe("The phone number of the author of the resume."),
 	location: z.string().describe("The location of the author of the resume."),

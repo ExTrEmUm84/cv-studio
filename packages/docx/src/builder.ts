@@ -235,6 +235,11 @@ function buildHeader(data: ResumeData, colorHex: string, textColorHex: string): 
 		contactParts.push(new TextRun({ text: basics.location, size: bodySize, font: bodyFont, color: textColorHex }));
 	}
 
+	if (basics.age) {
+		addSeparator();
+		contactParts.push(new TextRun({ text: basics.age, size: bodySize, font: bodyFont, color: textColorHex }));
+	}
+
 	if (basics.website.url) {
 		const websiteLink = toSafeDocxLink(basics.website.url);
 		if (websiteLink) {

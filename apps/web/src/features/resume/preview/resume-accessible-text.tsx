@@ -259,6 +259,7 @@ export function ResumeAccessibleText({ data }: ResumeAccessibleTextProps) {
 	if (basics.email) contact.push(<a href={`mailto:${basics.email}`}>{basics.email}</a>);
 	if (basics.phone) contact.push(<a href={`tel:${basics.phone}`}>{basics.phone}</a>);
 	if (basics.location) contact.push(basics.location);
+	if (basics.age) contact.push(basics.age);
 	if (website?.url?.trim()) contact.push(<a href={website.url}>{website.label?.trim() || website.url}</a>);
 	for (const field of basics.customFields ?? []) {
 		if (!field.text?.trim()) continue;

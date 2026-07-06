@@ -16,7 +16,7 @@
 				"size": {
 					"type": "number",
 					"minimum": 32,
-					"maximum": 512,
+					"maximum": 1024,
 					"description": "The size of the picture to display on the resume, defined in points (pt)."
 				},
 				"rotation": {
@@ -82,6 +82,11 @@
 					"type": "string",
 					"description": "The headline of the author of the resume."
 				},
+				"age": {
+					"default": "",
+					"type": "string",
+					"description": "The age of the author of the resume."
+				},
 				"email": {
 					"type": "string",
 					"description": "The email address of the author of the resume."
@@ -139,7 +144,7 @@
 					"description": "The custom fields to display on the resume."
 				}
 			},
-			"required": ["name", "headline", "email", "phone", "location", "website", "customFields"],
+			"required": ["name", "headline", "age", "email", "phone", "location", "website", "customFields"],
 			"additionalProperties": false,
 			"description": "Basic information about the author, such as name, email, phone, location, and website"
 		},

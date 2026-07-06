@@ -7,6 +7,7 @@ import { Image, Page, StyleSheet, View } from "#react-pdf-renderer";
 import { useRender } from "../../context";
 import { createBaseTemplateStyles } from "../shared/base-template-styles";
 import {
+	AgeContactItem,
 	CustomFieldContactItem,
 	EmailContactItem,
 	LocationContactItem,
@@ -135,6 +136,12 @@ const Header = ({ styles, colors }: PikachuHeaderProps) => {
 				/>
 				<LocationContactItem
 					location={basics.location}
+					style={styles.contactItem}
+					textStyle={styles.headerText}
+					iconColor={colors.background}
+				/>
+				<AgeContactItem
+					age={basics.age}
 					style={styles.contactItem}
 					textStyle={styles.headerText}
 					iconColor={colors.background}

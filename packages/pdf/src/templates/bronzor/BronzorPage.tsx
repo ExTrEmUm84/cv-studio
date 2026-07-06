@@ -7,6 +7,7 @@ import { Image, Page, StyleSheet, View } from "#react-pdf-renderer";
 import { useRender } from "../../context";
 import { createBaseTemplateStyles } from "../shared/base-template-styles";
 import {
+	AgeContactItem,
 	CustomFieldContactItem,
 	EmailContactItem,
 	LocationContactItem,
@@ -115,6 +116,7 @@ const Header = ({ styles }: BronzorHeaderProps) => {
 				<EmailContactItem email={basics.email} style={styles.headerContactItem} />
 				<PhoneContactItem phone={basics.phone} style={styles.headerContactItem} />
 				<LocationContactItem location={basics.location} style={styles.headerContactItem} />
+				<AgeContactItem age={basics.age} style={styles.headerContactItem} />
 				<WebsiteContactItem website={basics.website} style={styles.headerContactItem} />
 				{basics.customFields.map((field) => (
 					<CustomFieldContactItem key={field.id} field={field} style={styles.headerContactItem} />

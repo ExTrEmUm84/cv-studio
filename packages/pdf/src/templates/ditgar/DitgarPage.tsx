@@ -8,6 +8,7 @@ import { useRender } from "../../context";
 import { createBaseTemplateStyles } from "../shared/base-template-styles";
 import { getPrimaryTint } from "../shared/color-helpers";
 import {
+	AgeContactItem,
 	CustomFieldContactItem,
 	EmailContactItem,
 	LocationContactItem,
@@ -146,6 +147,12 @@ const Header = ({ styles, colors }: DitgarHeaderProps) => {
 				/>
 				<LocationContactItem
 					location={basics.location}
+					style={styles.contactItem}
+					textStyle={styles.headerText}
+					iconColor={colors.background}
+				/>
+				<AgeContactItem
+					age={basics.age}
 					style={styles.contactItem}
 					textStyle={styles.headerText}
 					iconColor={colors.background}

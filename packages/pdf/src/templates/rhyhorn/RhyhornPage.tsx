@@ -8,6 +8,7 @@ import { Image, Page, StyleSheet, View } from "#react-pdf-renderer";
 import { useRender } from "../../context";
 import { createBaseTemplateStyles } from "../shared/base-template-styles";
 import {
+	AgeContactItem,
 	CustomFieldContactItem,
 	EmailContactItem,
 	LocationContactItem,
@@ -105,6 +106,12 @@ const Header = ({ styles }: RhyhornHeaderProps) => {
 		contactItems.push({
 			id: "location",
 			content: <LocationContactItem location={basics.location} style={styles.contactItemContent} />,
+		});
+	}
+	if (basics.age) {
+		contactItems.push({
+			id: "age",
+			content: <AgeContactItem age={basics.age} style={styles.contactItemContent} />,
 		});
 	}
 

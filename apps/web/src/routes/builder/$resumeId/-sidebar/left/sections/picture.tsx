@@ -162,7 +162,7 @@ function PictureGeometryFields({ form, onAutoSave }: PictureGeometryFieldsProps)
 								value={field.state.value}
 								type="number"
 								min={32}
-								max={512}
+								max={1024}
 								step={1}
 								onBlur={field.handleBlur}
 								onChange={(e) => {

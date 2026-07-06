@@ -59,6 +59,7 @@ function renderHeader(basics: ResumeData["basics"]): string[] {
 		basics.email,
 		basics.phone,
 		basics.location,
+		basics.age,
 		link(basics.website.label || basics.website.url, basics.website.url),
 		...basics.customFields.map((field) => (field.link ? link(field.text, field.link) : field.text)),
 	].filter(Boolean);

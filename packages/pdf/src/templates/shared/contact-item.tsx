@@ -115,3 +115,20 @@ export const LocationContactItem = ({ location, style, textStyle, iconColor }: L
 		</View>
 	);
 };
+
+type AgeContactItemProps = {
+	age: string;
+	style?: ContactStyle;
+	textStyle?: ContactStyle;
+	iconColor?: string;
+};
+
+export const AgeContactItem = ({ age, style, textStyle, iconColor }: AgeContactItemProps) => {
+	if (!age) return null;
+	return (
+		<View {...(style ? { style } : {})}>
+			<Icon name="cake" {...(iconColor ? { color: iconColor } : {})} />
+			<Text {...(textStyle ? { style: textStyle } : {})}>{age}</Text>
+		</View>
+	);
+};

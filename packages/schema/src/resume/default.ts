@@ -15,7 +15,7 @@ export const defaultResumeData: ResumeData = {
 	picture: {
 		hidden: false,
 		url: "",
-		size: 80,
+		size: 120,
 		rotation: 0,
 		aspectRatio: 1,
 		borderRadius: 0,
@@ -27,6 +27,7 @@ export const defaultResumeData: ResumeData = {
 	basics: {
 		name: "",
 		headline: "",
+		age: "",
 		email: "",
 		phone: "",
 		location: "",
