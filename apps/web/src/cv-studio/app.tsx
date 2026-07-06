@@ -1,73 +1,11 @@
-import type { ContactKey, CV, Education, Experience } from "./cv-data";
-import { PDFDownloadLink } from "@react-pdf/renderer";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { contactItems, lines, PALETTE, parseLanguage, sample, storageKey } from "./cv-data";
+import type { PreviewPageSize } from "../features/resume/preview/preview.shared.utils";
+import type { CV, Education, Experience } from "./cv-data";
+import { PDFDownloadLink, pdf } from "@react-pdf/renderer";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { PdfCanvasDocument, PdfCanvasPage } from "../features/resume/preview/pdf-canvas";
+import { PALETTE, sample, storageKey } from "./cv-data";
 import { CVPdf } from "./pdf";
 import "./styles.css";
-
-const ICON_PROPS = {
-	fill: "none",
-	stroke: "currentColor",
-	strokeWidth: 2,
-	strokeLinecap: "round",
-	strokeLinejoin: "round",
-} as const;
-
-function ContactIconHtml({ name, color }: { name: ContactKey; color?: string }) {
-	return (
-		<svg
-			className="cv-contact-icon"
-			viewBox="0 0 24 24"
-			width="13"
-			height="13"
-			aria-hidden="true"
-			style={color ? { color } : undefined}
-		>
-			{name === "email" && (
-				<>
-					<path d="M3 5.5h18v13H3z" {...ICON_PROPS} />
-					<path d="M3 6.5l9 6.5 9-6.5" {...ICON_PROPS} />
-				</>
-			)}
-			{name === "phone" && (
-				<path
-					d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.13 1 .35 1.9.66 2.8a2 2 0 0 1-.45 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.45c.9.3 1.85.53 2.8.66a2 2 0 0 1 1.7 2z"
-					{...ICON_PROPS}
-				/>
-			)}
-			{name === "city" && (
-				<>
-					<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" {...ICON_PROPS} />
-					<circle cx="12" cy="10" r="2.6" {...ICON_PROPS} />
-				</>
-			)}
-			{name === "nationality" && (
-				<>
-					<circle cx="12" cy="12" r="9" {...ICON_PROPS} />
-					<path d="M3 12h18" {...ICON_PROPS} />
-					<path d="M12 3c2.6 2.7 2.6 15.3 0 18c-2.6-2.7-2.6-15.3 0-18z" {...ICON_PROPS} />
-				</>
-			)}
-			{name === "age" && (
-				<>
-					<path d="M5 6.5h14v13H5z" {...ICON_PROPS} />
-					<path d="M5 10.5h14" {...ICON_PROPS} />
-					<path d="M9 3.5v4M15 3.5v4" {...ICON_PROPS} />
-				</>
-			)}
-		</svg>
-	);
-}
-
-function DotsHtml({ count }: { count: number }) {
-	return (
-		<span className="cv-dots">
-			{[1, 2, 3, 4, 5].map((i) => (
-				<i key={i} className={i <= count ? "on" : ""} />
-			))}
-		</span>
-	);
-}
 
 function EgyptFlag() {
 	return (
@@ -322,251 +260,140 @@ function Editor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 	);
 }
 
-function SidebarInfo({ cv }: { cv: CV }) {
-	return (
-		<aside className="cv-preview-side">
-			{cv.photo && <img className="cv-photo" src={cv.photo} alt="Portrait" />}
-			<h2>Coordonnées</h2>
-			<div className="cv-side-contact">
-				{contactItems(cv).map((item) => (
-					<div key={item.key} className="cv-contact-line">
-						{cv.showIcons && <ContactIconHtml name={item.key} color={cv.iconColor} />}
-						<span>{item.value}</span>
-					</div>
-				))}
-			</div>
-			<h2>Compétences</h2>
-			<div className="cv-side-tags">
-				{lines(cv.skills).map((skill) => (
-					<span key={skill}>{skill}</span>
-				))}
-			</div>
-			<h2>Langues</h2>
-			<div className="cv-side-langs">
-				{lines(cv.languages).map((line) => {
-					const lang = parseLanguage(line);
-					return (
-						<p key={line}>
-							<strong>{lang.name}</strong>
-							{lang.level && <span>{lang.level}</span>}
-							{lang.dots > 0 && <DotsHtml count={lang.dots} />}
-						</p>
-					);
-				})}
-			</div>
-			<h2>Intérêts</h2>
-			{lines(cv.interests).map((line) => (
-				<p key={line}>• {line}</p>
-			))}
-		</aside>
+type PreviewLayer = {
+	id: number;
+	file: Blob;
+	numPages: number;
+	pageSizes: Record<number, PreviewPageSize>;
+	renderedPages: number[];
+	phase: "active" | "staged";
+};
+
+// Regenerate the PDF only once the user pauses typing.
+const PREVIEW_DEBOUNCE_MS = 150;
+
+/** Keep only the visible (active) layers, then stack the freshly built one on top. */
+const stackPreviewLayer = (layers: PreviewLayer[], next: PreviewLayer): PreviewLayer[] => {
+	const active = layers.filter((layer) => layer.phase === "active");
+	return active.length === 0 ? [next] : [...active, next];
+};
+
+const setLayerPageCount = (layers: PreviewLayer[], id: number, numPages: number): PreviewLayer[] =>
+	layers.map((layer) => (layer.id === id ? { ...layer, numPages } : layer));
+
+const setLayerPageSize = (
+	layers: PreviewLayer[],
+	id: number,
+	pageNumber: number,
+	pageSize: PreviewPageSize,
+): PreviewLayer[] =>
+	layers.map((layer) =>
+		layer.id === id ? { ...layer, pageSizes: { ...layer.pageSizes, [pageNumber]: pageSize } } : layer,
 	);
-}
-
-function Preview({ cv }: { cv: CV }) {
-	return (
-		<div className={`cv-paper cv-${cv.template}`} style={{ "--accent": cv.accent } as React.CSSProperties}>
-			{cv.template === "sidebar" && <SidebarInfo cv={cv} />}
-			<main className="cv-preview-main">
-				<header className="cv-head">
-					{cv.template !== "sidebar" && cv.photo && (
-						<img className="cv-photo cv-photo-inline" src={cv.photo} alt="Portrait" />
-					)}
-					<div>
-						<h1>{cv.name}</h1>
-						<p className="cv-role">{cv.title}</p>
-						{cv.template !== "sidebar" &&
-							(cv.showIcons ? (
-								<div className="cv-contact cv-contact-row">
-									{contactItems(cv).map((item) => (
-										<span key={item.key} className="cv-contact-chip">
-											<ContactIconHtml name={item.key} color={cv.iconColor} />
-											{item.value}
-										</span>
-									))}
-								</div>
-							) : (
-								<p className="cv-contact">
-									{contactItems(cv)
-										.map((item) => item.value)
-										.join("  ·  ")}
-								</p>
-							))}
-					</div>
-				</header>
-				<section>
-					<h2>Profil</h2>
-					<p className="cv-profile">{cv.profile}</p>
-				</section>
-				<section>
-					<h2>Expériences</h2>
-					{cv.experiences.map((item, index) => (
-						<div className="cv-item" key={index}>
-							<h3>
-								{item.role} — {item.company}
-							</h3>
-							<small>
-								{item.date} · {item.place}
-							</small>
-							<p>{item.description}</p>
-						</div>
-					))}
-				</section>
-				{cv.template !== "sidebar" && (
-					<section>
-						<h2>Compétences</h2>
-						<div className="cv-tags">
-							{lines(cv.skills).map((skill) => (
-								<span key={skill}>{skill}</span>
-							))}
-						</div>
-					</section>
-				)}
-				<section>
-					<h2>Formation</h2>
-					{cv.education.map((item, index) => (
-						<div className="cv-item" key={index}>
-							<h3>{item.degree}</h3>
-							<small>
-								{item.school} · {item.date} · {item.place}
-							</small>
-						</div>
-					))}
-				</section>
-				{cv.template !== "sidebar" && (
-					<section>
-						<h2>Langues</h2>
-						<div className="cv-languages">
-							{lines(cv.languages).map((line) => {
-								const lang = parseLanguage(line);
-								return (
-									<div key={line}>
-										<strong>{lang.name}</strong>
-										<span className="cv-lang-right">
-											{lang.level}
-											{lang.dots > 0 && <DotsHtml count={lang.dots} />}
-										</span>
-									</div>
-								);
-							})}
-						</div>
-					</section>
-				)}
-				{cv.template !== "sidebar" && (
-					<section>
-						<h2>Intérêts</h2>
-						<p>{lines(cv.interests).join(" · ")}</p>
-					</section>
-				)}
-			</main>
-		</div>
-	);
-}
-
-// Blocks that must never be cut across a page boundary (mirrors how the PDF keeps entries/sections whole).
-const PAGE_GUARD_SELECTOR =
-	".cv-item, .cv-side-langs p, .cv-languages > div, .cv-preview-main h2, .cv-preview-side h2, .cv-profile, .cv-head, .cv-tags, .cv-side-tags, .cv-side-contact";
-
-type Block = { top: number; bottom: number };
-
-/** Compute the y-offset of each page start so that no guarded block straddles a page boundary. */
-function computePageBreaks(paper: HTMLElement, pageHeight: number): number[] {
-	const paperTop = paper.getBoundingClientRect().top;
-	const total = paper.scrollHeight;
-	const blocks: Block[] = Array.from(paper.querySelectorAll<HTMLElement>(PAGE_GUARD_SELECTOR))
-		.map((el) => {
-			const rect = el.getBoundingClientRect();
-			return { top: rect.top - paperTop, bottom: rect.bottom - paperTop };
-		})
-		.filter((block) => block.bottom > block.top)
-		.sort((a, b) => a.top - b.top);
-
-	// Nudge a candidate break up until it no longer slices through any guarded block.
-	const safeBreak = (start: number): number => {
-		let y = start;
-		for (let guard = 0; guard < 50; guard++) {
-			let moved = false;
-			for (const block of blocks) {
-				if (block.top < y - 0.5 && y < block.bottom - 0.5) {
-					y = block.top;
-					moved = true;
-				}
-			}
-			if (!moved) break;
-		}
-		return y;
-	};
-
-	const breaks = [0];
-	let pageStart = 0;
-	for (const block of blocks) {
-		if (block.bottom <= pageStart + pageHeight + 0.5) continue; // still fits on the current page
-		const candidate = safeBreak(block.top);
-		if (candidate <= pageStart + 0.5) continue; // block starts on this page (or is taller than a page) — let it overflow
-		breaks.push(candidate);
-		pageStart = candidate;
-	}
-	// Safety net: if some oversized block leaves content past the last page, add plain breaks.
-	while (pageStart + pageHeight < total - 1 && breaks.length < 50) {
-		pageStart += pageHeight;
-		breaks.push(pageStart);
-	}
-	return breaks;
-}
 
 /**
- * Renders the live preview split into A4 sheets, breaking pages the way the PDF
- * does — never slicing an entry or section in half — so the on-screen preview
- * matches the downloaded document.
+ * Mark a staged page as painted; once every page of a staged layer has rendered,
+ * promote it to active and drop the previous active layer — so the swap only
+ * happens when the new PDF is fully ready (no blank flash mid-edit).
  */
-function PaginatedPreview({ cv }: { cv: CV }) {
-	const paperRef = useRef<HTMLDivElement>(null);
-	const sheetRef = useRef<HTMLDivElement>(null);
-	const [breaks, setBreaks] = useState<number[]>([0]);
-	useLayoutEffect(() => {
-		const paper = paperRef.current;
-		const sheet = sheetRef.current;
-		if (!paper || !sheet) return;
-		const update = () => {
-			const next = computePageBreaks(paper, sheet.clientHeight || 1);
-			setBreaks((prev) =>
-				prev.length === next.length && prev.every((value, i) => Math.abs(value - next[i]) < 1) ? prev : next,
-			);
-		};
-		update();
-		const observer = new ResizeObserver(update);
-		observer.observe(paper);
-		window.addEventListener("resize", update);
+const markLayerPageRendered = (layers: PreviewLayer[], id: number, pageNumber: number): PreviewLayer[] => {
+	let promote = false;
+	const next = layers.map((layer) => {
+		if (layer.id !== id || layer.renderedPages.includes(pageNumber)) return layer;
+		const renderedPages = [...layer.renderedPages, pageNumber];
+		if (layer.phase === "staged" && layer.numPages > 0 && renderedPages.length >= layer.numPages) {
+			promote = true;
+			return { ...layer, renderedPages, phase: "active" as const };
+		}
+		return { ...layer, renderedPages };
+	});
+	return promote ? next.filter((layer) => layer.id === id || layer.phase !== "active") : next;
+};
+
+/**
+ * On-screen preview that renders the ACTUAL exported PDF (via @react-pdf/renderer)
+ * to canvas with pdf.js — so what you see is exactly the downloaded document, page
+ * breaks and all. Reuses the builder's battle-tested PdfCanvasDocument/PdfCanvasPage.
+ */
+function PdfPreview({ cv }: { cv: CV }) {
+	const [layers, setLayers] = useState<PreviewLayer[]>([]);
+	const idRef = useRef(0);
+
+	useEffect(() => {
+		let cancelled = false;
+		const delay = idRef.current === 0 ? 0 : PREVIEW_DEBOUNCE_MS;
+		const timer = window.setTimeout(async () => {
+			try {
+				const file = await pdf(<CVPdf cv={cv} />).toBlob();
+				if (cancelled) return;
+				setLayers((current) => {
+					const hasActive = current.some((layer) => layer.phase === "active");
+					const next: PreviewLayer = {
+						id: idRef.current++,
+						file,
+						numPages: 0,
+						pageSizes: {},
+						renderedPages: [],
+						phase: hasActive ? "staged" : "active",
+					};
+					return stackPreviewLayer(current, next);
+				});
+			} catch (error) {
+				if (!cancelled) console.error("Aperçu PDF impossible à générer", error);
+			}
+		}, delay);
 		return () => {
-			observer.disconnect();
-			window.removeEventListener("resize", update);
+			cancelled = true;
+			window.clearTimeout(timer);
 		};
-	}, []);
+	}, [cv]);
 
 	return (
-		<div className="cv-pages">
-			{breaks.map((offset, index) => {
-				// Clip each sheet to the content that belongs to it (up to the next break); the
-				// rest of the A4 sheet stays blank, exactly like the PDF pushing an entry down.
-				const contentHeight = index < breaks.length - 1 ? breaks[index + 1] - offset : undefined;
-				return (
-					<div className="cv-sheet" key={index} ref={index === 0 ? sheetRef : undefined}>
-						<div
-							className="cv-sheet-slide"
-							style={{
-								height: contentHeight !== undefined ? `${contentHeight}px` : undefined,
-								transform: `translateY(-${offset}px)`,
-							}}
+		<div className="cv-pdf-preview">
+			{layers.length === 0 && <p className="cv-pdf-status">Génération du PDF…</p>}
+			<div className="cv-pdf-stack">
+				{layers.map((layer) => (
+					<div key={layer.id} className="cv-pdf-layer" data-phase={layer.phase} aria-hidden={layer.phase !== "active"}>
+						<PdfCanvasDocument
+							file={layer.file}
+							onLoadSuccess={(document) =>
+								setLayers((current) => setLayerPageCount(current, layer.id, document.numPages))
+							}
 						>
-							<div ref={index === 0 ? paperRef : undefined}>
-								<Preview cv={cv} />
-							</div>
-						</div>
-						<span className="cv-sheet-num">
-							{index + 1} / {breaks.length}
-						</span>
+							{(document) => (
+								<div className="cv-pdf-pages">
+									{Array.from({ length: layer.numPages }, (_, index) => {
+										const pageNumber = index + 1;
+										return (
+											<div className="cv-pdf-page" key={pageNumber}>
+												<PdfCanvasPage
+													document={document}
+													pageNumber={pageNumber}
+													pageScale={1}
+													totalPages={layer.numPages}
+													pageSize={layer.pageSizes[pageNumber]}
+													className="cv-pdf-canvas"
+													showPageNumbers={false}
+													onLoadSuccess={(_, pageSize) =>
+														setLayers((current) => setLayerPageSize(current, layer.id, pageNumber, pageSize))
+													}
+													onRenderSuccess={() => {
+														if (layer.phase !== "staged") return;
+														setLayers((current) => markLayerPageRendered(current, layer.id, pageNumber));
+													}}
+												/>
+												<span className="cv-sheet-num">
+													{pageNumber} / {layer.numPages}
+												</span>
+											</div>
+										);
+									})}
+								</div>
+							)}
+						</PdfCanvasDocument>
 					</div>
-				);
-			})}
+				))}
+			</div>
 		</div>
 	);
 }
@@ -639,7 +466,7 @@ function CVStudioMain() {
 						</PDFDownloadLink>
 					</div>
 				</div>
-				<PaginatedPreview cv={cv} />
+				<PdfPreview cv={cv} />
 			</section>
 		</div>
 	);
