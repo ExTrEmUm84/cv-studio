@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { ContactKey, CV } from "./cv-data";
 import { Circle, Document, Image, Page, Path, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import { contactItems, lines, parseLanguage } from "./cv-data";
@@ -172,6 +173,9 @@ const SideTitle = ({ children }: { children: string }) => (
 	</View>
 );
 
+/** Wraps a whole section so it never splits across pages — it moves to the next page as a block. */
+const KeepTogether = ({ children }: { children: ReactNode }) => <View wrap={false}>{children}</View>;
+
 const ExperienceBlock = ({ cv }: { cv: CV }) => (
 	<>
 		{cv.experiences.map((item, index) => (
@@ -231,37 +235,43 @@ function ClassicPdf({ cv }: { cv: CV }) {
 				<MainTitle accent={cv.accent}>Expériences</MainTitle>
 				<ExperienceBlock cv={cv} />
 
-				<MainTitle accent={cv.accent}>Compétences</MainTitle>
-				<View style={shared.tagRow}>
-					{lines(cv.skills).map((skill) => (
-						<View key={skill} style={classicStyles.tag}>
-							<Text style={classicStyles.tagText}>{skill}</Text>
-						</View>
-					))}
-				</View>
-
-				<MainTitle accent={cv.accent}>Formation</MainTitle>
-				<EducationBlock cv={cv} />
-
-				<MainTitle accent={cv.accent}>Langues</MainTitle>
-				{lines(cv.languages).map((line) => {
-					const lang = parseLanguage(line);
-					return (
-						<View key={line} style={classicStyles.lang} wrap={false}>
-							<Text style={shared.itemTitle}>{lang.name}</Text>
-							<View style={classicStyles.langRight}>
-								{lang.level ? <Text style={shared.itemMeta}>{lang.level}</Text> : null}
-								{lang.dots > 0 && <Dots count={lang.dots} filled={cv.accent} empty="#dde3ea" />}
+				<KeepTogether>
+					<MainTitle accent={cv.accent}>Compétences</MainTitle>
+					<View style={shared.tagRow}>
+						{lines(cv.skills).map((skill) => (
+							<View key={skill} style={classicStyles.tag}>
+								<Text style={classicStyles.tagText}>{skill}</Text>
 							</View>
-						</View>
-					);
-				})}
+						))}
+					</View>
+				</KeepTogether>
+
+				<KeepTogether>
+					<MainTitle accent={cv.accent}>Formation</MainTitle>
+					<EducationBlock cv={cv} />
+				</KeepTogether>
+
+				<KeepTogether>
+					<MainTitle accent={cv.accent}>Langues</MainTitle>
+					{lines(cv.languages).map((line) => {
+						const lang = parseLanguage(line);
+						return (
+							<View key={line} style={classicStyles.lang} wrap={false}>
+								<Text style={shared.itemTitle}>{lang.name}</Text>
+								<View style={classicStyles.langRight}>
+									{lang.level ? <Text style={shared.itemMeta}>{lang.level}</Text> : null}
+									{lang.dots > 0 && <Dots count={lang.dots} filled={cv.accent} empty="#dde3ea" />}
+								</View>
+							</View>
+						);
+					})}
+				</KeepTogether>
 
 				{lines(cv.interests).length > 0 && (
-					<>
+					<KeepTogether>
 						<MainTitle accent={cv.accent}>Intérêts</MainTitle>
 						<Text>{lines(cv.interests).join(" · ")}</Text>
-					</>
+					</KeepTogether>
 				)}
 			</Page>
 		</Document>
@@ -334,8 +344,10 @@ function SidebarPdf({ cv }: { cv: CV }) {
 					<MainTitle accent={cv.accent}>Expériences</MainTitle>
 					<ExperienceBlock cv={cv} />
 
-					<MainTitle accent={cv.accent}>Formation</MainTitle>
-					<EducationBlock cv={cv} />
+					<KeepTogether>
+						<MainTitle accent={cv.accent}>Formation</MainTitle>
+						<EducationBlock cv={cv} />
+					</KeepTogether>
 				</View>
 			</Page>
 		</Document>
