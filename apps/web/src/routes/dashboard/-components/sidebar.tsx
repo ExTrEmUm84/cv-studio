@@ -2,18 +2,7 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { Trans } from "@lingui/react/macro";
-import {
-	BrainIcon,
-	BriefcaseIcon,
-	ChatCircleDotsIcon,
-	GearSixIcon,
-	KeyIcon,
-	MagnifyingGlassIcon,
-	ReadCvLogoIcon,
-	ShieldCheckIcon,
-	UserCircleIcon,
-	WarningIcon,
-} from "@phosphor-icons/react";
+import { GearSixIcon, MagnifyingGlassIcon, ReadCvLogoIcon } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
 import { AnimatePresence, m } from "motion/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@reactive-resume/ui/components/avatar";
@@ -38,6 +27,7 @@ import { getInitials } from "@reactive-resume/utils/string";
 import { Copyright } from "@/components/ui/copyright";
 import { useCommandPaletteStore } from "@/features/command-palette/store";
 import { UserDropdownMenu } from "@/features/user/dropdown-menu";
+import { isCvStudioStatic } from "@/libs/app-mode";
 
 type SidebarItem = {
 	icon: React.ReactNode;
@@ -51,48 +41,13 @@ const appSidebarItems = [
 		label: msg`Resumes`,
 		href: "/dashboard/resumes",
 	},
-	{
-		icon: <BriefcaseIcon />,
-		label: msg`Applications`,
-		href: "/dashboard/applications",
-	},
-	{
-		icon: <ChatCircleDotsIcon />,
-		label: msg`Agents`,
-		href: "/agent",
-	},
 ] as const satisfies SidebarItem[];
 
 const settingsSidebarItems = [
 	{
-		icon: <UserCircleIcon />,
-		label: msg`Profile`,
-		href: "/dashboard/settings/profile",
-	},
-	{
 		icon: <GearSixIcon />,
 		label: msg`Preferences`,
 		href: "/dashboard/settings/preferences",
-	},
-	{
-		icon: <ShieldCheckIcon />,
-		label: msg`Authentication`,
-		href: "/dashboard/settings/authentication",
-	},
-	{
-		icon: <KeyIcon />,
-		label: msg`API Keys`,
-		href: "/dashboard/settings/api-keys",
-	},
-	{
-		icon: <BrainIcon />,
-		label: msg`Integrations`,
-		href: "/dashboard/settings/integrations",
-	},
-	{
-		icon: <WarningIcon />,
-		label: msg`Danger Zone`,
-		href: "/dashboard/settings/danger-zone",
 	},
 ] as const satisfies SidebarItem[];
 
@@ -146,6 +101,7 @@ function SidebarSearchButton() {
 export function DashboardSidebar() {
 	const { i18n } = useLingui();
 	const { state } = useSidebarState();
+	const isStatic = isCvStudioStatic();
 
 	return (
 		<Sidebar variant="floating" collapsible="icon">
@@ -157,7 +113,7 @@ export function DashboardSidebar() {
 							render={
 								<Link to="/">
 									<BrandIcon variant="icon" className="size-6" />
-									<h1 className="sr-only">Reactive Resume</h1>
+									<h1 className="sr-only">CV Studio</h1>
 								</Link>
 							}
 						/>
@@ -194,23 +150,36 @@ export function DashboardSidebar() {
 			<SidebarFooter className="gap-y-0">
 				<SidebarMenu>
 					<SidebarMenuItem>
-						<UserDropdownMenu>
-							{({ session }) => (
-								<SidebarMenuButton className="h-auto gap-x-3 group-data-[collapsible=icon]:p-1!">
-									<Avatar className="size-8 shrink-0 transition-all group-data-[collapsible=icon]:size-6">
-										<AvatarImage src={session.user.image ?? undefined} />
-										<AvatarFallback className="group-data-[collapsible=icon]:text-[0.5rem]">
-											{getInitials(session.user.name)}
-										</AvatarFallback>
-									</Avatar>
+						{isStatic ? (
+							<SidebarMenuButton className="h-auto gap-x-3 group-data-[collapsible=icon]:p-1!">
+								<Avatar className="size-8 shrink-0 transition-all group-data-[collapsible=icon]:size-6">
+									<AvatarFallback className="group-data-[collapsible=icon]:text-[0.5rem]">CV</AvatarFallback>
+								</Avatar>
 
-									<div className="transition-[margin,opacity] duration-200 ease-in-out group-data-[collapsible=icon]:-ms-8 group-data-[collapsible=icon]:opacity-0">
-										<p className="font-medium">{session.user.name}</p>
-										<p className="text-muted-foreground text-xs">{session.user.email}</p>
-									</div>
-								</SidebarMenuButton>
-							)}
-						</UserDropdownMenu>
+								<div className="transition-[margin,opacity] duration-200 ease-in-out group-data-[collapsible=icon]:-ms-8 group-data-[collapsible=icon]:opacity-0">
+									<p className="font-medium">CV Studio</p>
+									<p className="text-muted-foreground text-xs">Mode local</p>
+								</div>
+							</SidebarMenuButton>
+						) : (
+							<UserDropdownMenu>
+								{({ session }) => (
+									<SidebarMenuButton className="h-auto gap-x-3 group-data-[collapsible=icon]:p-1!">
+										<Avatar className="size-8 shrink-0 transition-all group-data-[collapsible=icon]:size-6">
+											<AvatarImage src={session.user.image ?? undefined} />
+											<AvatarFallback className="group-data-[collapsible=icon]:text-[0.5rem]">
+												{getInitials(session.user.name)}
+											</AvatarFallback>
+										</Avatar>
+
+										<div className="transition-[margin,opacity] duration-200 ease-in-out group-data-[collapsible=icon]:-ms-8 group-data-[collapsible=icon]:opacity-0">
+											<p className="font-medium">{session.user.name}</p>
+											<p className="text-muted-foreground text-xs">{session.user.email}</p>
+										</div>
+									</SidebarMenuButton>
+								)}
+							</UserDropdownMenu>
+						)}
 					</SidebarMenuItem>
 				</SidebarMenu>
 

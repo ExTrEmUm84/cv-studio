@@ -2,6 +2,7 @@ import { createRouter } from "@tanstack/react-router";
 import { ErrorScreen } from "./components/layout/error-screen";
 import { LoadingScreen } from "./components/layout/loading-screen";
 import { NotFoundScreen } from "./components/layout/not-found-screen";
+import { isCvStudioStatic } from "./libs/app-mode";
 import { getSession } from "./libs/auth/session";
 import { getLocale, loadLocale } from "./libs/locale";
 import { client, orpc } from "./libs/orpc/client";
@@ -15,14 +16,17 @@ export const getRouter = async () => {
 	const [theme, locale, session, flags] = await Promise.all([
 		getTheme(),
 		getLocale(),
-		getSession(),
-		client.flags.get(),
+		isCvStudioStatic() ? null : getSession(),
+		isCvStudioStatic()
+			? { disableSignups: true, disableEmailAuth: true, showSponsors: false, smtpEnabled: false }
+			: client.flags.get(),
 	]);
 
 	await loadLocale(locale);
 
 	const router = createRouter({
 		routeTree,
+		basepath: import.meta.env.BASE_URL,
 		scrollRestoration: true,
 		defaultViewTransition: true,
 		defaultStructuralSharing: true,

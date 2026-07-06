@@ -4,6 +4,8 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useMediaQuery } from "usehooks-ts";
 import { useBuilderResumeUpdateSubscription, useResumeCleanup, useResumeStore } from "@/features/resume/builder/draft";
+import { getLocalResume } from "@/features/resume/local-storage";
+import { isCvStudioStatic } from "@/libs/app-mode";
 import { orpc } from "@/libs/orpc/client";
 import { createNoindexFollowMeta } from "@/libs/seo";
 import { DesktopBuilderShell } from "./-components/desktop-builder-shell";
@@ -13,10 +15,17 @@ import { getBuilderLayout } from "./-store/sidebar";
 export const Route = createFileRoute("/builder/$resumeId")({
 	component: RouteComponent,
 	beforeLoad: async ({ context }) => {
+		if (isCvStudioStatic()) return { session: context.session };
 		if (!context.session) throw redirect({ to: "/auth/login", replace: true });
 		return { session: context.session };
 	},
 	loader: async ({ params, context }) => {
+		if (isCvStudioStatic()) {
+			const resume = getLocalResume(params.resumeId);
+			if (!resume) throw redirect({ to: "/dashboard/resumes", search: { sort: "lastUpdatedAt", tags: [] } });
+			return { layout: await getBuilderLayout(), name: resume.name, resume };
+		}
+
 		const [layout, resume] = await Promise.all([
 			getBuilderLayout(),
 			context.queryClient.ensureQueryData(orpc.resume.getById.queryOptions({ input: { id: params.resumeId } })),
@@ -26,12 +35,36 @@ export const Route = createFileRoute("/builder/$resumeId")({
 	},
 	head: ({ loaderData }) => ({
 		meta: loaderData
-			? [{ title: `${loaderData.name} - Reactive Resume` }, createNoindexFollowMeta()]
+			? [{ title: `${loaderData.name} - CV Studio` }, createNoindexFollowMeta()]
 			: [createNoindexFollowMeta()],
 	}),
 });
 
 function RouteComponent() {
+	if (isCvStudioStatic()) return <StaticRouteComponent />;
+	return <ServerRouteComponent />;
+}
+
+function StaticRouteComponent() {
+	const { layout: initialLayout, resume } = Route.useLoaderData();
+	const initializeResumeStore = useResumeStore((state) => state.initialize);
+	const isReady = useResumeStore((state) => state.isReady);
+	const initializedResumeId = useResumeStore((state) => state.resumeId);
+	const isInitialized = isReady && initializedResumeId === resume.id;
+
+	useResumeCleanup();
+
+	useEffect(() => {
+		if (isInitialized) return;
+		initializeResumeStore(resume);
+	}, [initializeResumeStore, isInitialized, resume]);
+
+	if (!isInitialized) return null;
+
+	return <BuilderLayoutShell initialLayout={initialLayout} />;
+}
+
+function ServerRouteComponent() {
 	const { layout: initialLayout } = Route.useLoaderData();
 
 	const { resumeId } = Route.useParams();

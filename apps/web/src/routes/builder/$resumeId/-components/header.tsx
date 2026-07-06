@@ -34,7 +34,9 @@ import {
 	useResumeStore,
 } from "@/features/resume/builder/draft";
 import { ResumeDownloadDialog } from "@/features/resume/export/download-dialog";
+import { deleteLocalResume, duplicateLocalResume, saveLocalResume } from "@/features/resume/local-storage";
 import { useConfirm } from "@/hooks/use-confirm";
+import { isCvStudioStatic } from "@/libs/app-mode";
 import { getResumeErrorMessage } from "@/libs/error-message";
 import { orpc } from "@/libs/orpc/client";
 import { useBuilderSidebar } from "../-store/sidebar";
@@ -84,8 +86,8 @@ export function BuilderHeader() {
 				<h2 className="min-w-0 truncate font-medium">{name}</h2>
 				{isLocked && <LockSimpleIcon className="ms-2 text-muted-foreground" />}
 				<SaveStatusIndicator />
-				<BuilderAiAssistant resumeId={resumeId} />
-				<BuilderVersionHistory resumeId={resumeId} />
+				{!isCvStudioStatic() && <BuilderAiAssistant resumeId={resumeId} />}
+				{!isCvStudioStatic() && <BuilderVersionHistory resumeId={resumeId} />}
 				<BuilderHeaderDropdown />
 			</div>
 
@@ -170,6 +172,7 @@ function BuilderHeaderDropdown() {
 
 	const resume = useCurrentResume();
 	const patchResume = usePatchResume();
+	const isStatic = isCvStudioStatic();
 	const id = resume.id;
 	const name = resume.name;
 	const slug = resume.slug;
@@ -184,6 +187,12 @@ function BuilderHeaderDropdown() {
 	};
 
 	const handleDuplicate = () => {
+		if (isStatic) {
+			const duplicate = duplicateLocalResume(resume);
+			void navigate({ to: "/builder/$resumeId", params: { resumeId: duplicate.id } });
+			return;
+		}
+
 		openDialog("resume.duplicate", { id, name, slug, tags, shouldRedirect: true });
 	};
 
@@ -194,6 +203,15 @@ function BuilderHeaderDropdown() {
 			});
 
 			if (!confirmation) return;
+		}
+
+		if (isStatic) {
+			const nextLocked = !isLocked;
+			saveLocalResume({ ...resume, isLocked: nextLocked });
+			patchResume((draft) => {
+				draft.isLocked = nextLocked;
+			});
+			return;
 		}
 
 		setLockedResume(
@@ -217,6 +235,12 @@ function BuilderHeaderDropdown() {
 		});
 
 		if (!confirmation) return;
+
+		if (isStatic) {
+			deleteLocalResume(id);
+			void navigate({ to: "/dashboard/resumes", search: { sort: "lastUpdatedAt", tags: [] } });
+			return;
+		}
 
 		const toastId = toast.loading(t`Deleting your resume...`);
 

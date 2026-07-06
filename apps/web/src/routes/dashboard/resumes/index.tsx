@@ -11,7 +11,7 @@ import {
 } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, stripSearchParams, useNavigate } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import z from "zod";
 import { Button } from "@reactive-resume/ui/components/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@reactive-resume/ui/components/input-group";
@@ -21,6 +21,8 @@ import { Tabs, TabsList, TabsTrigger } from "@reactive-resume/ui/components/tabs
 import { cn } from "@reactive-resume/utils/style";
 import { Combobox } from "@/components/ui/combobox";
 import { useDialogStore } from "@/dialogs/store";
+import { createLocalResume, listLocalResumes, subscribeToLocalResumes } from "@/features/resume/local-storage";
+import { isCvStudioStatic } from "@/libs/app-mode";
 import { orpc } from "@/libs/orpc/client";
 import { DashboardHeader } from "../-components/header";
 import { GridView } from "./-components/grid-view";
@@ -52,9 +54,15 @@ function RouteComponent() {
 	const { search, tags, sort, view } = Route.useSearch();
 	const navigate = useNavigate({ from: Route.fullPath });
 	const { openDialog } = useDialogStore();
+	const isStatic = isCvStudioStatic();
+	const localResumes = useSyncExternalStore(subscribeToLocalResumes, listLocalResumes, () => []);
 
-	const { data: allTags } = useQuery(orpc.resume.tags.list.queryOptions());
-	const { data: resumes } = useQuery(orpc.resume.list.queryOptions({ input: { tags, sort } }));
+	const { data: allTags } = useQuery({ ...orpc.resume.tags.list.queryOptions(), enabled: !isStatic });
+	const { data: serverResumes } = useQuery({
+		...orpc.resume.list.queryOptions({ input: { tags, sort } }),
+		enabled: !isStatic,
+	});
+	const resumes = isStatic ? localResumes : serverResumes;
 
 	const filteredResumes = useMemo(() => {
 		const list = resumes ?? [];
@@ -66,9 +74,36 @@ function RouteComponent() {
 	}, [resumes, search]);
 
 	const tagOptions = useMemo(() => {
+		if (isStatic) {
+			return Array.from(new Set(localResumes.flatMap((resume) => resume.tags))).map((tag) => ({
+				value: tag,
+				label: tag,
+			}));
+		}
+
 		if (!allTags) return [];
 		return allTags.map((tag) => ({ value: tag, label: tag }));
-	}, [allTags]);
+	}, [allTags, isStatic, localResumes]);
+
+	const handleCreateResume = (withSampleData = false) => {
+		if (!isStatic) {
+			openDialog("resume.create", undefined);
+			return;
+		}
+
+		const resume = createLocalResume({ withSampleData });
+		void navigate({ to: "/builder/$resumeId", params: { resumeId: resume.id } });
+	};
+
+	const handleImportResume = () => {
+		if (isStatic) {
+			const resume = createLocalResume({ withSampleData: true });
+			void navigate({ to: "/builder/$resumeId", params: { resumeId: resume.id } });
+			return;
+		}
+
+		openDialog("resume.import", undefined);
+	};
 
 	const sortOptions = useMemo(() => {
 		return [
@@ -90,7 +125,7 @@ function RouteComponent() {
 								<PlusIcon />
 								<Trans>Create</Trans>
 							</Button>
-							<Button size="sm" variant="outline" onClick={() => openDialog("resume.import", undefined)}>
+							<Button size="sm" variant="outline" onClick={handleImportResume}>
 								<DownloadSimpleIcon />
 								<Trans>Import</Trans>
 							</Button>
@@ -178,9 +213,19 @@ function RouteComponent() {
 			</div>
 
 			{view === "list" ? (
-				<ListView resumes={filteredResumes} hasResumes={(resumes?.length ?? 0) > 0} />
+				<ListView
+					resumes={filteredResumes}
+					hasResumes={(resumes?.length ?? 0) > 0}
+					onCreate={() => handleCreateResume()}
+					onImport={handleImportResume}
+				/>
 			) : (
-				<GridView resumes={filteredResumes} hasResumes={(resumes?.length ?? 0) > 0} />
+				<GridView
+					resumes={filteredResumes}
+					hasResumes={(resumes?.length ?? 0) > 0}
+					onCreate={() => handleCreateResume()}
+					onImport={handleImportResume}
+				/>
 			)}
 		</div>
 	);

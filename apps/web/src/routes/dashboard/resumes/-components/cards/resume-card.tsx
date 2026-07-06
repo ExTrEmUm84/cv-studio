@@ -1,3 +1,4 @@
+import type { Resume as LocalResume } from "@/features/resume/builder/draft";
 import type { RouterOutput } from "@/libs/orpc/client";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -10,7 +11,7 @@ import { BaseCard } from "./base-card";
 import { ResumeThumbnail } from "./resume-thumbnail";
 
 type ResumeCardProps = {
-	resume: RouterOutput["resume"]["list"][number];
+	resume: RouterOutput["resume"]["list"][number] | LocalResume;
 };
 
 type ResumeLockOverlayProps = {

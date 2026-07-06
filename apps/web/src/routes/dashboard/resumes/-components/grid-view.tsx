@@ -1,3 +1,4 @@
+import type { Resume as LocalResume } from "@/features/resume/builder/draft";
 import type { RouterOutput } from "@/libs/orpc/client";
 import { Trans } from "@lingui/react/macro";
 import { AnimatePresence, m } from "motion/react";
@@ -5,14 +6,16 @@ import { CreateResumeCard } from "./cards/create-card";
 import { ImportResumeCard } from "./cards/import-card";
 import { ResumeCard } from "./cards/resume-card";
 
-type Resume = RouterOutput["resume"]["list"][number];
+type Resume = RouterOutput["resume"]["list"][number] | LocalResume;
 
 type Props = {
 	resumes: Resume[];
 	hasResumes: boolean;
+	onCreate?: () => void;
+	onImport?: () => void;
 };
 
-export function GridView({ resumes, hasResumes }: Props) {
+export function GridView({ resumes, hasResumes, onCreate, onImport }: Props) {
 	if (resumes.length === 0 && hasResumes) {
 		return (
 			<p className="py-8 text-center text-muted-foreground text-sm">
@@ -31,7 +34,7 @@ export function GridView({ resumes, hasResumes }: Props) {
 					transition={{ duration: 0.2, ease: "easeOut" }}
 					className="will-change-[transform,opacity]"
 				>
-					<CreateResumeCard />
+					<CreateResumeCard onCreate={onCreate} />
 				</m.div>
 
 				<m.div
@@ -41,7 +44,7 @@ export function GridView({ resumes, hasResumes }: Props) {
 					transition={{ duration: 0.2, delay: 0.03, ease: "easeOut" }}
 					className="will-change-[transform,opacity]"
 				>
-					<ImportResumeCard />
+					<ImportResumeCard onImport={onImport} />
 				</m.div>
 			</div>
 		);

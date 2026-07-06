@@ -1,3 +1,4 @@
+import type { Resume } from "@/features/resume/builder/draft";
 import type { RouterOutput } from "@/libs/orpc/client";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
@@ -10,7 +11,7 @@ import {
 	TrashSimpleIcon,
 } from "@phosphor-icons/react";
 import { useMutation } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
 	DropdownMenu,
@@ -20,18 +21,22 @@ import {
 	DropdownMenuTrigger,
 } from "@reactive-resume/ui/components/dropdown-menu";
 import { useDialogStore } from "@/dialogs/store";
+import { deleteLocalResume, duplicateLocalResume, saveLocalResume } from "@/features/resume/local-storage";
 import { useConfirm } from "@/hooks/use-confirm";
+import { isCvStudioStatic } from "@/libs/app-mode";
 import { getResumeErrorMessage } from "@/libs/error-message";
 import { orpc } from "@/libs/orpc/client";
 
 type Props = Omit<React.ComponentProps<typeof DropdownMenuContent>, "children"> & {
-	resume: RouterOutput["resume"]["list"][number];
+	resume: RouterOutput["resume"]["list"][number] | Resume;
 	children: React.ComponentProps<typeof DropdownMenuTrigger>["render"];
 };
 
 export function ResumeDropdownMenu({ resume, children, ...props }: Props) {
 	const confirm = useConfirm();
+	const navigate = useNavigate();
 	const { openDialog } = useDialogStore();
+	const isStatic = isCvStudioStatic();
 
 	const { mutate: deleteResume } = useMutation(orpc.resume.delete.mutationOptions());
 	const { mutate: setLockedResume } = useMutation(orpc.resume.setLocked.mutationOptions());
@@ -41,6 +46,13 @@ export function ResumeDropdownMenu({ resume, children, ...props }: Props) {
 	};
 
 	const handleDuplicate = () => {
+		if (isStatic) {
+			if (!("data" in resume)) return;
+			const duplicate = duplicateLocalResume(resume);
+			void navigate({ to: "/builder/$resumeId", params: { resumeId: duplicate.id } });
+			return;
+		}
+
 		openDialog("resume.duplicate", resume);
 	};
 
@@ -51,6 +63,12 @@ export function ResumeDropdownMenu({ resume, children, ...props }: Props) {
 			});
 
 			if (!confirmation) return;
+		}
+
+		if (isStatic) {
+			if (!("data" in resume)) return;
+			saveLocalResume({ ...resume, isLocked: !resume.isLocked });
+			return;
 		}
 
 		setLockedResume(
@@ -69,6 +87,11 @@ export function ResumeDropdownMenu({ resume, children, ...props }: Props) {
 		});
 
 		if (!confirmation) return;
+
+		if (isStatic) {
+			deleteLocalResume(resume.id);
+			return;
+		}
 
 		const toastId = toast.loading(t`Deleting your resume...`);
 

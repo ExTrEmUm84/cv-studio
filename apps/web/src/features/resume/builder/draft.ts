@@ -10,6 +10,8 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { immer } from "zustand/middleware/immer";
 import { create } from "zustand/react";
+import { saveLocalResume } from "@/features/resume/local-storage";
+import { isCvStudioStatic } from "@/libs/app-mode";
 import { orpc, streamClient } from "@/libs/orpc/client";
 
 export type Resume = {
@@ -19,6 +21,7 @@ export type Resume = {
 	tags: string[];
 	data: ResumeData;
 	isLocked: boolean;
+	createdAt?: Date;
 	updatedAt: Date;
 	hasPassword?: boolean;
 	isPublic?: boolean;
@@ -308,6 +311,12 @@ function syncCurrentResume(id: string) {
 	const resume = useResumeStore.getState().resume;
 	if (!resume || resume.id !== id) return;
 
+	if (isCvStudioStatic()) {
+		saveLocalResume(resume);
+		useResumeStore.getState().setSaveStatus("saved");
+		return;
+	}
+
 	getRuntime(id).syncResume(resume);
 }
 
@@ -323,7 +332,7 @@ export const useResumeStore = create<ResumeStore>()(
 		canRedo: false,
 
 		initialize: (resume) => {
-			if (resume) setRuntimeBaseline(resume);
+			if (resume && !isCvStudioStatic()) setRuntimeBaseline(resume);
 			resetHistoryRuntime();
 
 			set((state) => {
@@ -366,7 +375,7 @@ export const useResumeStore = create<ResumeStore>()(
 		},
 
 		replaceResumeFromServer: (resume) => {
-			setRuntimeBaseline(resume);
+			if (!isCvStudioStatic()) setRuntimeBaseline(resume);
 
 			// This runs both for the echo of our own autosave (identical data → keep history) and for
 			// external/cross-tab/AI rebases (different data → local undo history no longer applies).
@@ -450,7 +459,7 @@ export const useResumeStore = create<ResumeStore>()(
 				state.canRedo = state.redoStack.length > 0;
 			});
 
-			getRuntime(currentResume.id).hasPendingLocalChanges = true;
+			if (!isCvStudioStatic()) getRuntime(currentResume.id).hasPendingLocalChanges = true;
 			syncCurrentResume(currentResume.id);
 		},
 
@@ -504,7 +513,7 @@ function applyHistoryStep(get: StoreGet, set: ImmerSet, direction: "undo" | "red
 		draft.canRedo = draft.redoStack.length > 0;
 	});
 
-	getRuntime(currentResume.id).hasPendingLocalChanges = true;
+	if (!isCvStudioStatic()) getRuntime(currentResume.id).hasPendingLocalChanges = true;
 	syncCurrentResume(currentResume.id);
 }
 
@@ -572,7 +581,7 @@ export function useUpdateResumeData() {
 	return useCallback(
 		(fn: (draft: WritableDraft<ResumeData>) => void) => {
 			if (!resumeId) return;
-			bindRuntimeQueryClient(resumeId, queryClient);
+			if (!isCvStudioStatic()) bindRuntimeQueryClient(resumeId, queryClient);
 			updateResumeData(fn);
 		},
 		[queryClient, resumeId, updateResumeData],
@@ -583,6 +592,7 @@ export function useResumeUpdateSubscription({ resumeId, onUpdate, onError }: Res
 	const [_retryNonce, setRetryNonce] = useState(0);
 
 	useEffect(() => {
+		if (isCvStudioStatic()) return;
 		if (!resumeId) return;
 
 		let didCancel = false;
@@ -670,7 +680,7 @@ export function useResumeCleanup() {
 		if (!resumeId) return;
 
 		return () => {
-			cleanupRuntime(resumeId);
+			if (!isCvStudioStatic()) cleanupRuntime(resumeId);
 			reset();
 		};
 	}, [resumeId, reset]);

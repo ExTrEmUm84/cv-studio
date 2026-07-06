@@ -1,3 +1,4 @@
+import type { Resume as LocalResume } from "@/features/resume/builder/draft";
 import type { RouterOutput } from "@/libs/orpc/client";
 import { useLingui } from "@lingui/react";
 import { Trans } from "@lingui/react/macro";
@@ -9,18 +10,20 @@ import { Button } from "@reactive-resume/ui/components/button";
 import { useDialogStore } from "@/dialogs/store";
 import { ResumeDropdownMenu } from "./menus/dropdown-menu";
 
-type Resume = RouterOutput["resume"]["list"][number];
+type Resume = RouterOutput["resume"]["list"][number] | LocalResume;
 
 type ListViewProps = {
 	resumes: Resume[];
 	hasResumes: boolean;
+	onCreate?: () => void;
+	onImport?: () => void;
 };
 
 type ResumeListItemProps = {
 	resume: Resume;
 };
 
-export function ListView({ resumes, hasResumes }: ListViewProps) {
+export function ListView({ resumes, hasResumes, onCreate, onImport }: ListViewProps) {
 	const { openDialog } = useDialogStore();
 
 	if (resumes.length === 0 && hasResumes) {
@@ -33,10 +36,18 @@ export function ListView({ resumes, hasResumes }: ListViewProps) {
 
 	if (resumes.length === 0) {
 		const handleCreateResume = () => {
+			if (onCreate) {
+				onCreate();
+				return;
+			}
 			openDialog("resume.create", undefined);
 		};
 
 		const handleImportResume = () => {
+			if (onImport) {
+				onImport();
+				return;
+			}
 			openDialog("resume.import", undefined);
 		};
 

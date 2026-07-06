@@ -35,7 +35,9 @@ import {
 import { generateId, generateRandomName, slugify } from "@reactive-resume/utils/string";
 import { ChipInput } from "@/components/input/chip-input";
 import { usePatchResume } from "@/features/resume/builder/draft";
+import { createLocalResume, updateLocalResumeMetadata } from "@/features/resume/local-storage";
 import { useFormBlocker } from "@/hooks/use-form-blocker";
+import { isCvStudioStatic } from "@/libs/app-mode";
 import { authClient } from "@/libs/auth/client";
 import { getResumeErrorMessage } from "@/libs/error-message";
 import { orpc } from "@/libs/orpc/client";
@@ -61,6 +63,7 @@ const defaultValues: FormValues = {
 export function CreateResumeDialog(_: DialogProps<"resume.create">) {
 	const navigate = useNavigate();
 	const closeDialog = useDialogStore((state) => state.closeDialog);
+	const isStatic = isCvStudioStatic();
 	// Skip the unsaved-changes guard when we close as a result of a successful create.
 	const didCreateRef = useRef(false);
 
@@ -75,6 +78,14 @@ export function CreateResumeDialog(_: DialogProps<"resume.create">) {
 		},
 		validators: { onSubmit: formSchema },
 		onSubmit: ({ value }) => {
+			if (isStatic) {
+				const resume = createLocalResume({ name: value.name });
+				didCreateRef.current = true;
+				closeDialog();
+				void navigate({ to: "/builder/$resumeId", params: { resumeId: resume.id } });
+				return;
+			}
+
 			const toastId = toast.loading(t`Creating your resume...`);
 
 			createResume(value, {
@@ -102,6 +113,14 @@ export function CreateResumeDialog(_: DialogProps<"resume.create">) {
 	});
 
 	const onCreateSampleResume = () => {
+		if (isStatic) {
+			const resume = createLocalResume({ name: form.state.values.name, withSampleData: true });
+			didCreateRef.current = true;
+			closeDialog();
+			void navigate({ to: "/builder/$resumeId", params: { resumeId: resume.id } });
+			return;
+		}
+
 		const values = form.state.values;
 		const randomName = generateRandomName();
 
@@ -188,6 +207,7 @@ export function UpdateResumeDialog({ data }: DialogProps<"resume.update">) {
 	const closeDialog = useDialogStore((state) => state.closeDialog);
 	const patchResume = usePatchResume();
 	const params = useParams({ strict: false }) as { resumeId?: string };
+	const isStatic = isCvStudioStatic();
 
 	const { mutate: updateResume, isPending } = useMutation(orpc.resume.update.mutationOptions());
 
@@ -200,6 +220,19 @@ export function UpdateResumeDialog({ data }: DialogProps<"resume.update">) {
 		},
 		validators: { onSubmit: formSchema },
 		onSubmit: ({ value }) => {
+			if (isStatic) {
+				updateLocalResumeMetadata(value.id, value);
+				if (params.resumeId === value.id) {
+					patchResume((draft) => {
+						draft.name = value.name;
+						draft.slug = value.slug;
+						draft.tags = value.tags;
+					});
+				}
+				closeDialog();
+				return;
+			}
+
 			const toastId = toast.loading(t`Updating your resume...`);
 
 			updateResume(value, {

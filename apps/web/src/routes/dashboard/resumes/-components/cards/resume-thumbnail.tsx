@@ -1,4 +1,5 @@
 import type { ResumeData } from "@reactive-resume/schema/resume/data";
+import type { Resume as LocalResume } from "@/features/resume/builder/draft";
 import type { RouterOutput } from "@/libs/orpc/client";
 import { FileTextIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
@@ -9,9 +10,10 @@ import { cn } from "@reactive-resume/utils/style";
 import { createResumePdfBlob } from "@/features/resume/export/pdf-document";
 import { createPdfFirstPageImageUrl } from "@/features/resume/preview/pdf-thumbnail";
 import { getResumeThumbnailCacheKey } from "@/features/resume/preview/resume-thumbnail.shared";
+import { isCvStudioStatic } from "@/libs/app-mode";
 import { orpc } from "@/libs/orpc/client";
 
-type ResumeListItem = RouterOutput["resume"]["list"][number];
+type ResumeListItem = RouterOutput["resume"]["list"][number] | LocalResume;
 
 type ThumbnailState = { status: "error" | "idle" | "loading" } | { status: "ready"; url: string };
 
@@ -75,12 +77,14 @@ function useResumeThumbnail(data: ResumeData | undefined, cacheKey: string | und
 export function ResumeThumbnail({ isLocked, resume }: ResumeThumbnailProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const isInView = useInView(containerRef, { amount: 0.1, margin: "240px", once: true });
+	const isStatic = isCvStudioStatic();
 	const { data: resumeData, isError: resumeIsError } = useQuery({
 		...orpc.resume.getById.queryOptions({ input: { id: resume.id } }),
-		enabled: isInView,
+		enabled: isInView && !isStatic,
 	});
+	const data = isStatic && "data" in resume ? resume.data : resumeData?.data;
 	const thumbnail = useResumeThumbnail(
-		resumeData?.data,
+		data,
 		isInView ? getResumeThumbnailCacheKey(resume.id, resume.updatedAt) : undefined,
 	);
 	const hasFailed = resumeIsError || thumbnail.status === "error";

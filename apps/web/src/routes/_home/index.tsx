@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { isCvStudioStatic } from "@/libs/app-mode";
 import { createRootStructuredDataScript, getCanonicalRootUrl } from "@/libs/seo";
 import { DonationBanner } from "./-sections/donate";
 import { Faq } from "./-sections/faq";
@@ -13,6 +14,9 @@ import { Testimonials } from "./-sections/testimonials";
 
 export const Route = createFileRoute("/_home/")({
 	component: RouteComponent,
+	beforeLoad: () => {
+		if (isCvStudioStatic()) throw redirect({ to: "/dashboard/resumes", search: { sort: "lastUpdatedAt", tags: [] } });
+	},
 	head: () => {
 		const appUrl = typeof window !== "undefined" ? window.location.origin : "https://rxresu.me";
 		const canonicalUrl = getCanonicalRootUrl(appUrl);
