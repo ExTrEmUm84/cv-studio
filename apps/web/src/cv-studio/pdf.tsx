@@ -1,6 +1,59 @@
-import type { CV } from "./cv-data";
-import { Circle, Document, Image, Page, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
-import { contactValues, lines, parseLanguage } from "./cv-data";
+import type { ContactKey, CV } from "./cv-data";
+import { Circle, Document, Image, Page, Path, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
+import { contactItems, lines, parseLanguage } from "./cv-data";
+
+const ICON_STROKE = { strokeWidth: 2, fill: "none", strokeLinecap: "round", strokeLinejoin: "round" } as const;
+
+/** Small line icon drawn per contact field (email/phone/city/nationality/age). */
+const ContactIcon = ({ name, color, size = 9 }: { name: ContactKey; color: string; size?: number }) => (
+	<Svg width={size} height={size} viewBox="0 0 24 24">
+		{name === "email" && (
+			<>
+				<Path d="M3 5.5h18v13H3z" stroke={color} {...ICON_STROKE} />
+				<Path d="M3 6.5l9 6.5 9-6.5" stroke={color} {...ICON_STROKE} />
+			</>
+		)}
+		{name === "phone" && (
+			<Path
+				d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.13 1 .35 1.9.66 2.8a2 2 0 0 1-.45 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.45c.9.3 1.85.53 2.8.66a2 2 0 0 1 1.7 2z"
+				stroke={color}
+				{...ICON_STROKE}
+			/>
+		)}
+		{name === "city" && (
+			<>
+				<Path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" stroke={color} {...ICON_STROKE} />
+				<Circle cx={12} cy={10} r={2.6} stroke={color} {...ICON_STROKE} />
+			</>
+		)}
+		{name === "nationality" && (
+			<>
+				<Circle cx={12} cy={12} r={9} stroke={color} {...ICON_STROKE} />
+				<Path d="M3 12h18" stroke={color} {...ICON_STROKE} />
+				<Path d="M12 3c2.6 2.7 2.6 15.3 0 18c-2.6-2.7-2.6-15.3 0-18z" stroke={color} {...ICON_STROKE} />
+			</>
+		)}
+		{name === "age" && (
+			<>
+				<Path d="M5 6.5h14v13H5z" stroke={color} {...ICON_STROKE} />
+				<Path d="M5 10.5h14" stroke={color} {...ICON_STROKE} />
+				<Path d="M9 3.5v4M15 3.5v4" stroke={color} {...ICON_STROKE} />
+			</>
+		)}
+	</Svg>
+);
+
+/** Row of 5 proficiency dots (filled up to `count`). */
+const Dots = ({ count, filled, empty }: { count: number; filled: string; empty: string }) => (
+	<View style={{ flexDirection: "row", marginTop: 3 }}>
+		{[1, 2, 3, 4, 5].map((i) => (
+			<View
+				key={i}
+				style={{ width: 5, height: 5, borderRadius: 2.5, marginRight: 3, backgroundColor: i <= count ? filled : empty }}
+			/>
+		))}
+	</View>
+);
 
 const A4_HEIGHT = 841.89;
 const SIDE_WIDTH = 200;
@@ -20,7 +73,7 @@ const shared = StyleSheet.create({
 	body: { fontSize: 10, lineHeight: 1.4, color: "#1f2933" },
 	name: { fontSize: 26, fontWeight: 700, marginBottom: 2 },
 	role: { fontSize: 12.5, fontWeight: 500, color: "#52606d", marginBottom: 12 },
-	item: { marginBottom: 9 },
+	item: { marginBottom: 8 },
 	itemTitle: { fontSize: 11, fontWeight: 700, marginBottom: 1.5 },
 	itemMeta: { fontSize: 9, color: "#7b8794", marginBottom: 2.5 },
 	tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 1 },
@@ -28,7 +81,7 @@ const shared = StyleSheet.create({
 
 const classicStyles = StyleSheet.create({
 	page: {
-		paddingVertical: 38,
+		paddingVertical: 32,
 		paddingHorizontal: 40,
 		fontFamily: "Helvetica",
 		color: "#1f2933",
@@ -39,13 +92,16 @@ const classicStyles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 18,
-		marginBottom: 18,
-		paddingBottom: 16,
+		marginBottom: 13,
+		paddingBottom: 12,
 		borderBottomWidth: 1,
 		borderBottomColor: "#e4e7eb",
 	},
-	photo: { width: 84, height: 84, borderRadius: 42, objectFit: "cover" },
-	contact: { fontSize: 9.5, color: "#7b8794", marginTop: 2 },
+	photo: { width: 98, height: 98, borderRadius: 49, objectFit: "cover" },
+	contactRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 5 },
+	contactChip: { flexDirection: "row", alignItems: "center", marginRight: 12, marginBottom: 3 },
+	contactText: { fontSize: 9.5, lineHeight: 1, color: "#7b8794", marginLeft: 4 },
+	langRight: { alignItems: "flex-end" },
 	tag: {
 		backgroundColor: "#eef2f6",
 		borderRadius: 9,
@@ -73,16 +129,18 @@ const sidebarStyles = StyleSheet.create({
 	side: { width: SIDE_WIDTH, paddingTop: 30, paddingBottom: 26, paddingHorizontal: 20 },
 	main: { flex: 1, paddingTop: 34, paddingBottom: 30, paddingHorizontal: 28 },
 	photoWrap: {
-		width: 104,
-		height: 104,
-		borderRadius: 52,
+		width: 132,
+		height: 132,
+		borderRadius: 66,
 		alignSelf: "center",
-		marginBottom: 18,
+		marginBottom: 20,
 		padding: 3,
 		backgroundColor: "rgba(255,255,255,0.16)",
 	},
-	photo: { width: "100%", height: "100%", borderRadius: 50, objectFit: "cover" },
+	photo: { width: "100%", height: "100%", borderRadius: 63, objectFit: "cover" },
 	sideText: { fontSize: 9.5, color: "rgba(255,255,255,0.88)", marginBottom: 4 },
+	contactRow: { flexDirection: "row", alignItems: "center", marginBottom: 5 },
+	contactText: { fontSize: 9.5, lineHeight: 1, color: "rgba(255,255,255,0.88)", marginLeft: 6, flex: 1 },
 	sideTag: {
 		backgroundColor: "rgba(255,255,255,0.16)",
 		borderRadius: 8,
@@ -94,13 +152,14 @@ const sidebarStyles = StyleSheet.create({
 		justifyContent: "center",
 	},
 	sideTagText: { color: "#ffffff", fontSize: 8.5, lineHeight: 1 },
-	sideLangName: { color: "#ffffff", fontWeight: 700, fontSize: 9.5 },
+	sideLangName: { color: "#ffffff", fontWeight: 700, fontSize: 9.5, marginBottom: 1.5 },
+	langLevel: { fontSize: 9, color: "rgba(255,255,255,0.7)" },
 	dot: { color: "rgba(255,255,255,0.6)" },
 });
 
 /** Section title with a short accent underline (modern, softer than a full rule). */
 const MainTitle = ({ children, accent }: { children: string; accent: string }) => (
-	<View style={{ marginTop: 15, marginBottom: 7 }}>
+	<View style={{ marginTop: 12, marginBottom: 6 }}>
 		<Text style={{ fontSize: 9.5, letterSpacing: 1.3, color: accent, fontWeight: 700 }}>{children.toUpperCase()}</Text>
 		<View style={{ width: 26, height: 2, backgroundColor: accent, borderRadius: 1, marginTop: 4 }} />
 	</View>
@@ -147,7 +206,22 @@ function ClassicPdf({ cv }: { cv: CV }) {
 					<View>
 						<Text style={[shared.name, { color: cv.accent }]}>{cv.name}</Text>
 						<Text style={shared.role}>{cv.title}</Text>
-						<Text style={classicStyles.contact}>{contactValues(cv).join(" · ")}</Text>
+						<View style={classicStyles.contactRow}>
+							{cv.showIcons ? (
+								contactItems(cv).map((item) => (
+									<View key={item.key} style={classicStyles.contactChip}>
+										<ContactIcon name={item.key} color="#7b8794" size={8.5} />
+										<Text style={classicStyles.contactText}>{item.value}</Text>
+									</View>
+								))
+							) : (
+								<Text style={classicStyles.contactText}>
+									{contactItems(cv)
+										.map((item) => item.value)
+										.join("  ·  ")}
+								</Text>
+							)}
+						</View>
 					</View>
 				</View>
 
@@ -173,9 +247,12 @@ function ClassicPdf({ cv }: { cv: CV }) {
 				{lines(cv.languages).map((line) => {
 					const lang = parseLanguage(line);
 					return (
-						<View key={line} style={classicStyles.lang}>
+						<View key={line} style={classicStyles.lang} wrap={false}>
 							<Text style={shared.itemTitle}>{lang.name}</Text>
-							<Text style={shared.itemMeta}>{lang.level}</Text>
+							<View style={classicStyles.langRight}>
+								{lang.level ? <Text style={shared.itemMeta}>{lang.level}</Text> : null}
+								{lang.dots > 0 && <Dots count={lang.dots} filled={cv.accent} empty="#dde3ea" />}
+							</View>
 						</View>
 					);
 				})}
@@ -210,10 +287,11 @@ function SidebarPdf({ cv }: { cv: CV }) {
 					)}
 
 					<SideTitle>Coordonnées</SideTitle>
-					{contactValues(cv).map((value) => (
-						<Text key={value} style={sidebarStyles.sideText}>
-							{value}
-						</Text>
+					{contactItems(cv).map((item) => (
+						<View key={item.key} style={sidebarStyles.contactRow}>
+							{cv.showIcons && <ContactIcon name={item.key} color="rgba(255,255,255,0.72)" />}
+							<Text style={sidebarStyles.contactText}>{item.value}</Text>
+						</View>
 					))}
 
 					<SideTitle>Compétences</SideTitle>
@@ -229,9 +307,10 @@ function SidebarPdf({ cv }: { cv: CV }) {
 					{lines(cv.languages).map((line) => {
 						const lang = parseLanguage(line);
 						return (
-							<View key={line} style={{ marginBottom: 6 }} wrap={false}>
+							<View key={line} style={{ marginBottom: 12 }} wrap={false}>
 								<Text style={sidebarStyles.sideLangName}>{lang.name}</Text>
-								<Text style={sidebarStyles.sideText}>{lang.level}</Text>
+								{lang.level ? <Text style={sidebarStyles.langLevel}>{lang.level}</Text> : null}
+								{lang.dots > 0 && <Dots count={lang.dots} filled="#ffffff" empty="rgba(255,255,255,0.28)" />}
 							</View>
 						);
 					})}

@@ -1,9 +1,77 @@
-import type { CV, Education, Experience } from "./cv-data";
+import type { ContactKey, CV, Education, Experience } from "./cv-data";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { useEffect, useMemo, useState } from "react";
-import { contactValues, lines, parseLanguage, sample, storageKey } from "./cv-data";
+import { contactItems, lines, PALETTE, parseLanguage, sample, storageKey } from "./cv-data";
 import { CVPdf } from "./pdf";
 import "./styles.css";
+
+const ICON_PROPS = {
+	fill: "none",
+	stroke: "currentColor",
+	strokeWidth: 2,
+	strokeLinecap: "round",
+	strokeLinejoin: "round",
+} as const;
+
+function ContactIconHtml({ name }: { name: ContactKey }) {
+	return (
+		<svg className="cv-contact-icon" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
+			{name === "email" && (
+				<>
+					<path d="M3 5.5h18v13H3z" {...ICON_PROPS} />
+					<path d="M3 6.5l9 6.5 9-6.5" {...ICON_PROPS} />
+				</>
+			)}
+			{name === "phone" && (
+				<path
+					d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.13 1 .35 1.9.66 2.8a2 2 0 0 1-.45 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.45c.9.3 1.85.53 2.8.66a2 2 0 0 1 1.7 2z"
+					{...ICON_PROPS}
+				/>
+			)}
+			{name === "city" && (
+				<>
+					<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" {...ICON_PROPS} />
+					<circle cx="12" cy="10" r="2.6" {...ICON_PROPS} />
+				</>
+			)}
+			{name === "nationality" && (
+				<>
+					<circle cx="12" cy="12" r="9" {...ICON_PROPS} />
+					<path d="M3 12h18" {...ICON_PROPS} />
+					<path d="M12 3c2.6 2.7 2.6 15.3 0 18c-2.6-2.7-2.6-15.3 0-18z" {...ICON_PROPS} />
+				</>
+			)}
+			{name === "age" && (
+				<>
+					<path d="M5 6.5h14v13H5z" {...ICON_PROPS} />
+					<path d="M5 10.5h14" {...ICON_PROPS} />
+					<path d="M9 3.5v4M15 3.5v4" {...ICON_PROPS} />
+				</>
+			)}
+		</svg>
+	);
+}
+
+function DotsHtml({ count }: { count: number }) {
+	return (
+		<span className="cv-dots">
+			{[1, 2, 3, 4, 5].map((i) => (
+				<i key={i} className={i <= count ? "on" : ""} />
+			))}
+		</span>
+	);
+}
+
+function EgyptFlag() {
+	return (
+		<svg className="cv-flag" viewBox="0 0 30 20" preserveAspectRatio="none" role="img" aria-label="Drapeau égyptien">
+			<rect width="30" height="6.667" fill="#ce1126" />
+			<rect y="6.667" width="30" height="6.666" fill="#fff" />
+			<rect y="13.333" width="30" height="6.667" fill="#111" />
+			<circle cx="15" cy="10" r="2.4" fill="#c8a02a" />
+		</svg>
+	);
+}
 
 function Field({
 	label,
@@ -97,9 +165,11 @@ function Editor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 	return (
 		<aside className="cv-editor">
 			<div className="cv-logo">
-				<div className="cv-logo-mark">CV</div>
+				<div className="cv-logo-mark">
+					<EgyptFlag />
+				</div>
 				<div>
-					<strong>CV Studio</strong>
+					<strong>Nourhaine Studio</strong>
 					<small>éditeur local</small>
 				</div>
 			</div>
@@ -116,6 +186,22 @@ function Editor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 				<label className="cv-field">
 					<span>Couleur principale</span>
 					<input type="color" value={cv.accent} onChange={(event) => set("accent", event.target.value)} />
+				</label>
+				<div className="cv-palette">
+					{PALETTE.map((color) => (
+						<button
+							key={color}
+							type="button"
+							className={cv.accent === color ? "cv-swatch on" : "cv-swatch"}
+							style={{ background: color }}
+							onClick={() => set("accent", color)}
+							aria-label={`Couleur ${color}`}
+						/>
+					))}
+				</div>
+				<label className="cv-check">
+					<input type="checkbox" checked={cv.showIcons} onChange={(event) => set("showIcons", event.target.checked)} />
+					<span>Icônes de contact (décoche pour une version simple)</span>
 				</label>
 			</section>
 			<section className="cv-panel">
@@ -208,7 +294,7 @@ function Editor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 				<h2>Compétences & langues</h2>
 				<Field label="Compétences — une par ligne" value={cv.skills} onChange={(value) => set("skills", value)} area />
 				<Field
-					label="Langues — format : Langue | niveau"
+					label="Langues — Langue | niveau | note 1-5 (points, optionnel)"
 					value={cv.languages}
 					onChange={(value) => set("languages", value)}
 					area
@@ -224,14 +310,14 @@ function SidebarInfo({ cv }: { cv: CV }) {
 		<aside className="cv-preview-side">
 			{cv.photo && <img className="cv-photo" src={cv.photo} alt="Portrait" />}
 			<h2>Coordonnées</h2>
-			<p>
-				{contactValues(cv).map((value, index) => (
-					<span key={value}>
-						{index > 0 && <br />}
-						{value}
-					</span>
+			<div className="cv-side-contact">
+				{contactItems(cv).map((item) => (
+					<div key={item.key} className="cv-contact-line">
+						{cv.showIcons && <ContactIconHtml name={item.key} />}
+						<span>{item.value}</span>
+					</div>
 				))}
-			</p>
+			</div>
 			<h2>Compétences</h2>
 			<div className="cv-side-tags">
 				{lines(cv.skills).map((skill) => (
@@ -245,7 +331,8 @@ function SidebarInfo({ cv }: { cv: CV }) {
 					return (
 						<p key={line}>
 							<strong>{lang.name}</strong>
-							<span>{lang.level}</span>
+							{lang.level && <span>{lang.level}</span>}
+							{lang.dots > 0 && <DotsHtml count={lang.dots} />}
 						</p>
 					);
 				})}
@@ -270,7 +357,23 @@ function Preview({ cv }: { cv: CV }) {
 					<div>
 						<h1>{cv.name}</h1>
 						<p className="cv-role">{cv.title}</p>
-						{cv.template !== "sidebar" && <p className="cv-contact">{contactValues(cv).join(" · ")}</p>}
+						{cv.template !== "sidebar" &&
+							(cv.showIcons ? (
+								<div className="cv-contact cv-contact-row">
+									{contactItems(cv).map((item) => (
+										<span key={item.key} className="cv-contact-chip">
+											<ContactIconHtml name={item.key} />
+											{item.value}
+										</span>
+									))}
+								</div>
+							) : (
+								<p className="cv-contact">
+									{contactItems(cv)
+										.map((item) => item.value)
+										.join("  ·  ")}
+								</p>
+							))}
 					</div>
 				</header>
 				<section>
@@ -321,7 +424,10 @@ function Preview({ cv }: { cv: CV }) {
 								return (
 									<div key={line}>
 										<strong>{lang.name}</strong>
-										<span>{lang.level}</span>
+										<span className="cv-lang-right">
+											{lang.level}
+											{lang.dots > 0 && <DotsHtml count={lang.dots} />}
+										</span>
 									</div>
 								);
 							})}
@@ -351,10 +457,29 @@ export function CVStudioApp() {
 	useEffect(() => {
 		localStorage.setItem(storageKey, JSON.stringify(cv));
 	}, [cv]);
-	const fileName = useMemo(
-		() => `${(cv.name || "CV").replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "")}.pdf`,
-		[cv.name],
-	);
+	const baseName = useMemo(() => (cv.name || "CV").replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, ""), [cv.name]);
+	const fileName = `${baseName}.pdf`;
+	const exportData = () => {
+		const blob = new Blob([JSON.stringify(cv, null, 2)], { type: "application/json" });
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.href = url;
+		link.download = `${baseName}.json`;
+		link.click();
+		URL.revokeObjectURL(url);
+	};
+	const importData = (file?: File) => {
+		if (!file) return;
+		const reader = new FileReader();
+		reader.onload = () => {
+			try {
+				setCv({ ...sample, ...JSON.parse(String(reader.result)) });
+			} catch {
+				window.alert("Fichier invalide : ce n'est pas un export CV Studio valide.");
+			}
+		};
+		reader.readAsText(file);
+	};
 	return (
 		<div className="cv-studio-app">
 			<Editor cv={cv} setCv={setCv} />
@@ -368,6 +493,21 @@ export function CVStudioApp() {
 						<button type="button" onClick={() => setCv(sample)}>
 							Réinitialiser
 						</button>
+						<button type="button" onClick={exportData}>
+							Exporter
+						</button>
+						<label className="cv-import-button">
+							Importer
+							<input
+								type="file"
+								accept="application/json"
+								hidden
+								onChange={(event) => {
+									importData(event.target.files?.[0]);
+									event.target.value = "";
+								}}
+							/>
+						</label>
 						<PDFDownloadLink className="cv-pdf-button" document={<CVPdf cv={cv} />} fileName={fileName}>
 							Télécharger PDF
 						</PDFDownloadLink>
