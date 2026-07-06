@@ -37,8 +37,20 @@ export type PageLayout = { main: SectionId[]; sidebar: SectionId[] };
 /** Explicit multi-page layout — the user decides which section lands on which page/column. */
 export type Layout = { sidebarWidth: number; pages: PageLayout[] };
 
-/** Per-section page-break constraint (mapped to react-pdf `wrap={false}` at render time). */
-export type SectionOptions = { keepTogether: boolean };
+/**
+ * Per-section page-break behaviour:
+ * - "flow"    : may be split across a page boundary (individual entries still never cut in two)
+ * - "keep"    : stays whole — jumps to the next page rather than being split (react-pdf `wrap={false}`)
+ * - "newpage" : always starts at the top of a new page (react-pdf `break`)
+ */
+export type SectionBreakMode = "flow" | "keep" | "newpage";
+export type SectionOptions = { mode: SectionBreakMode };
+
+export const SECTION_BREAK_LABELS: { value: SectionBreakMode; label: string }[] = [
+	{ value: "flow", label: "Couper" },
+	{ value: "keep", label: "Grouper" },
+	{ value: "newpage", label: "Nouvelle page" },
+];
 
 export type CV = {
 	name: string;
@@ -69,8 +81,25 @@ export type CV = {
  */
 export const defaultSectionOptions = (): Record<SectionId, SectionOptions> =>
 	Object.fromEntries(
-		SECTION_ORDER.map((id) => [id, { keepTogether: id !== "profile" && id !== "experiences" }]),
+		SECTION_ORDER.map((id) => [id, { mode: id === "profile" || id === "experiences" ? "flow" : "keep" }]),
 	) as Record<SectionId, SectionOptions>;
+
+/** Coerce stored section options to the current shape (migrates the legacy `{ keepTogether }` flag). */
+export const normalizeSectionOptions = (
+	stored: Partial<Record<SectionId, { mode?: SectionBreakMode; keepTogether?: boolean }>> | undefined,
+): Record<SectionId, SectionOptions> => {
+	const result = defaultSectionOptions();
+	if (stored) {
+		for (const id of SECTION_ORDER) {
+			const option = stored[id];
+			if (!option) continue;
+			if (option.mode === "flow" || option.mode === "keep" || option.mode === "newpage")
+				result[id] = { mode: option.mode };
+			else if (typeof option.keepTogether === "boolean") result[id] = { mode: option.keepTogether ? "keep" : "flow" };
+		}
+	}
+	return result;
+};
 
 /** Every section present, split into main/sidebar the way the classic sidebar template does. */
 export const defaultLayout = (): Layout => ({
@@ -110,7 +139,7 @@ export const normalizeLayout = (layout: Layout | undefined): Layout => {
 export const hydrateCv = (cv: CV): CV => ({
 	...cv,
 	layout: normalizeLayout(cv.layout),
-	sectionOptions: { ...defaultSectionOptions(), ...cv.sectionOptions },
+	sectionOptions: normalizeSectionOptions(cv.sectionOptions),
 });
 
 export const storageKey = "cv-studio-standalone-v2";

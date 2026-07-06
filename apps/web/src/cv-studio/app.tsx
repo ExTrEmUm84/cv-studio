@@ -1,6 +1,6 @@
 import type { DragEndEvent, DragOverEvent, DragStartEvent, UniqueIdentifier } from "@dnd-kit/core";
 import type { PreviewPageSize } from "../features/resume/preview/preview.shared.utils";
-import type { CV, Education, Experience, PageLayout, SectionId, TemplateKey } from "./cv-data";
+import type { CV, Education, Experience, PageLayout, SectionBreakMode, SectionId, TemplateKey } from "./cv-data";
 import {
 	closestCorners,
 	DndContext,
@@ -19,6 +19,7 @@ import {
 	hydrateCv,
 	normalizeLayout,
 	PALETTE,
+	SECTION_BREAK_LABELS,
 	SECTION_LABELS,
 	sample,
 	storageKey,
@@ -144,12 +145,12 @@ const fromContainers = (containers: Containers, pageCount: number): PageLayout[]
 
 function SectionChip({
 	id,
-	keepTogether,
-	onToggleKeep,
+	mode,
+	onModeChange,
 }: {
 	id: SectionId;
-	keepTogether: boolean;
-	onToggleKeep: () => void;
+	mode: SectionBreakMode;
+	onModeChange: (mode: SectionBreakMode) => void;
 }) {
 	const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 	return (
@@ -162,14 +163,18 @@ function SectionChip({
 				⠿
 			</span>
 			<span className="cv-layout-chip-label">{SECTION_LABELS[id]}</span>
-			<button
-				type="button"
-				className={keepTogether ? "cv-layout-keep on" : "cv-layout-keep"}
-				onClick={onToggleKeep}
-				title="Garder cette section entière sur une seule page"
+			<select
+				className="cv-layout-mode"
+				value={mode}
+				onChange={(event) => onModeChange(event.target.value as SectionBreakMode)}
+				title="Comportement quand la section arrive en fin de page"
 			>
-				grouper
-			</button>
+				{SECTION_BREAK_LABELS.map((option) => (
+					<option key={option.value} value={option.value}>
+						{option.label}
+					</option>
+				))}
+			</select>
 		</div>
 	);
 }
@@ -179,13 +184,13 @@ function LayoutColumn({
 	label,
 	items,
 	cv,
-	onToggleKeep,
+	onSetMode,
 }: {
 	id: string;
 	label?: string;
 	items: SectionId[];
 	cv: CV;
-	onToggleKeep: (id: SectionId) => void;
+	onSetMode: (id: SectionId, mode: SectionBreakMode) => void;
 }) {
 	const { setNodeRef, isOver } = useDroppable({ id });
 	return (
@@ -200,8 +205,8 @@ function LayoutColumn({
 							<SectionChip
 								key={sid}
 								id={sid}
-								keepTogether={cv.sectionOptions[sid]?.keepTogether ?? false}
-								onToggleKeep={() => onToggleKeep(sid)}
+								mode={cv.sectionOptions[sid]?.mode ?? "flow"}
+								onModeChange={(mode) => onSetMode(sid, mode)}
 							/>
 						))
 					)}
@@ -273,11 +278,8 @@ function LayoutEditor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 		setCv({ ...cv, layout: normalizeLayout({ ...cv.layout, pages: fromContainers(next, pageCount) }) });
 	};
 
-	const toggleKeep = (id: SectionId) =>
-		setCv({
-			...cv,
-			sectionOptions: { ...cv.sectionOptions, [id]: { keepTogether: !(cv.sectionOptions[id]?.keepTogether ?? false) } },
-		});
+	const setMode = (id: SectionId, mode: SectionBreakMode) =>
+		setCv({ ...cv, sectionOptions: { ...cv.sectionOptions, [id]: { mode } } });
 
 	const addPage = () =>
 		setCv({ ...cv, layout: { ...cv.layout, pages: [...cv.layout.pages, { main: [], sidebar: [] }] } });
@@ -295,7 +297,9 @@ function LayoutEditor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 		<section className="cv-panel">
 			<h2>Mise en page</h2>
 			<p className="cv-hint">
-				Glisse les sections entre les colonnes et les pages. « grouper » empêche une section d'être coupée en deux.
+				Glisse les sections entre les colonnes et les pages. Le menu par section choisit son comportement en fin de page
+				: <strong>Couper</strong> (peut passer sur 2 pages), <strong>Grouper</strong> (reste entière),{" "}
+				<strong>Nouvelle page</strong>.
 			</p>
 			<DndContext
 				sensors={sensors}
@@ -320,7 +324,7 @@ function LayoutEditor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 								label={twoCol ? "Principale" : undefined}
 								items={containers[columnKey(index, "main")] ?? []}
 								cv={cv}
-								onToggleKeep={toggleKeep}
+								onSetMode={setMode}
 							/>
 							{twoCol && (
 								<LayoutColumn
@@ -328,7 +332,7 @@ function LayoutEditor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 									label="Latérale"
 									items={containers[columnKey(index, "sidebar")] ?? []}
 									cv={cv}
-									onToggleKeep={toggleKeep}
+									onSetMode={setMode}
 								/>
 							)}
 						</div>

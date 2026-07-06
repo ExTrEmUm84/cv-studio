@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactNode } from "react";
-import type { ContactKey, CV, PageLayout, SectionId } from "./cv-data";
+import type { ContactKey, CV, PageLayout, SectionBreakMode, SectionId } from "./cv-data";
 import { Circle, Document, Image, Page, Path, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import { contactItems, lines, normalizeLayout, parseLanguage, SECTION_LABELS } from "./cv-data";
 
@@ -241,18 +241,51 @@ const SectionContent = ({ id, cv, col }: { id: SectionId; cv: CV; col: Column })
 	}
 };
 
-/** A section = its title + body, optionally kept whole on one page (`wrap={false}`). */
-const SectionBlock = ({ id, cv, col, keepTogether }: { id: SectionId; cv: CV; col: Column; keepTogether: boolean }) => (
-	<View wrap={keepTogether ? false : undefined}>
+/** A section = its title + body, with per-section page-break behaviour (flow / keep whole / new page). */
+const SectionBlock = ({
+	id,
+	cv,
+	col,
+	mode,
+	allowBreak,
+}: {
+	id: SectionId;
+	cv: CV;
+	col: Column;
+	mode: SectionBreakMode;
+	allowBreak: boolean;
+}) => (
+	<View wrap={mode === "keep" ? false : undefined} break={mode === "newpage" && allowBreak ? true : undefined}>
 		<SectionTitle label={SECTION_LABELS[id]} col={col} />
 		<SectionContent id={id} cv={cv} col={col} />
 	</View>
 );
 
-const Sections = ({ ids, cv, col }: { ids: SectionId[]; cv: CV; col: Column }) => (
+const Sections = ({
+	ids,
+	cv,
+	col,
+	firstOnPage = false,
+	allowNewPage = true,
+}: {
+	ids: SectionId[];
+	cv: CV;
+	col: Column;
+	firstOnPage?: boolean;
+	allowNewPage?: boolean;
+}) => (
 	<>
-		{ids.map((id) => (
-			<SectionBlock key={id} id={id} cv={cv} col={col} keepTogether={cv.sectionOptions?.[id]?.keepTogether ?? false} />
+		{ids.map((id, index) => (
+			<SectionBlock
+				key={id}
+				id={id}
+				cv={cv}
+				col={col}
+				mode={cv.sectionOptions?.[id]?.mode ?? "flow"}
+				// Never force a break on the very first section of page 1 (would leave a blank first page),
+				// and disable "new page" inside the narrow side columns where it renders awkwardly.
+				allowBreak={allowNewPage && !(firstOnPage && index === 0)}
+			/>
 		))}
 	</>
 );
@@ -575,7 +608,7 @@ const resolveTemplate = (cv: CV): Template => {
 const SinglePage = ({ cv, t, page, first }: { cv: CV; t: Template; page: PageLayout; first: boolean }) => (
 	<Page size="A4" style={t.page}>
 		{first && t.Header()}
-		<Sections ids={[...page.main, ...page.sidebar]} cv={cv} col={t.main} />
+		<Sections ids={[...page.main, ...page.sidebar]} cv={cv} col={t.main} firstOnPage={first} />
 	</Page>
 );
 
@@ -603,11 +636,11 @@ const SidebarPage = ({
 		</View>
 		<View style={{ width: sideWidth, paddingTop: 30, paddingBottom: 26, paddingHorizontal: 20 }}>
 			{first && t.SideHeader?.()}
-			<Sections ids={page.sidebar} cv={cv} col={t.side} />
+			<Sections ids={page.sidebar} cv={cv} col={t.side} allowNewPage={false} />
 		</View>
 		<View style={{ flex: 1, paddingTop: 34, paddingBottom: 30, paddingHorizontal: 28 }}>
 			{first && t.Header()}
-			<Sections ids={page.main} cv={cv} col={t.main} />
+			<Sections ids={page.main} cv={cv} col={t.main} firstOnPage={first} />
 		</View>
 	</Page>
 );
@@ -627,12 +660,12 @@ const BandedPage = ({
 }) => {
 	const side = (
 		<View style={{ width: sideWidth }}>
-			<Sections ids={page.sidebar} cv={cv} col={t.side} />
+			<Sections ids={page.sidebar} cv={cv} col={t.side} allowNewPage={false} />
 		</View>
 	);
 	const main = (
 		<View style={{ flex: 1 }}>
-			<Sections ids={page.main} cv={cv} col={t.main} />
+			<Sections ids={page.main} cv={cv} col={t.main} firstOnPage={first} />
 		</View>
 	);
 	return (

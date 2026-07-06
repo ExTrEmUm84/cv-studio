@@ -750,20 +750,16 @@
 	flex: 1;
 	font-weight: 600;
 }
-.cv-layout-keep {
+.cv-layout-mode {
 	border: 1px solid rgba(255, 255, 255, 0.16);
-	background: transparent;
-	color: #9db2c6;
+	background: #16202b;
+	color: #cfe0ef;
 	font-size: 10.5px;
 	font-weight: 700;
-	padding: 3px 8px;
-	border-radius: 999px;
+	padding: 3px 6px;
+	border-radius: 8px;
 	cursor: pointer;
-}
-.cv-layout-keep.on {
-	background: #79d4ff;
-	border-color: #79d4ff;
-	color: #071d2a;
+	max-width: 104px;
 }
 .cv-layout-width {
 	margin-top: 4px;
