@@ -445,22 +445,75 @@ function Preview({ cv }: { cv: CV }) {
 	);
 }
 
+// Blocks that must never be cut across a page boundary (mirrors how the PDF keeps entries/sections whole).
+const PAGE_GUARD_SELECTOR =
+	".cv-item, .cv-side-langs p, .cv-languages > div, .cv-preview-main h2, .cv-preview-side h2, .cv-profile, .cv-head, .cv-tags, .cv-side-tags, .cv-side-contact";
+
+type Block = { top: number; bottom: number };
+
+/** Compute the y-offset of each page start so that no guarded block straddles a page boundary. */
+function computePageBreaks(paper: HTMLElement, pageHeight: number): number[] {
+	const paperTop = paper.getBoundingClientRect().top;
+	const total = paper.scrollHeight;
+	const blocks: Block[] = Array.from(paper.querySelectorAll<HTMLElement>(PAGE_GUARD_SELECTOR))
+		.map((el) => {
+			const rect = el.getBoundingClientRect();
+			return { top: rect.top - paperTop, bottom: rect.bottom - paperTop };
+		})
+		.filter((block) => block.bottom > block.top)
+		.sort((a, b) => a.top - b.top);
+
+	// Nudge a candidate break up until it no longer slices through any guarded block.
+	const safeBreak = (start: number): number => {
+		let y = start;
+		for (let guard = 0; guard < 50; guard++) {
+			let moved = false;
+			for (const block of blocks) {
+				if (block.top < y - 0.5 && y < block.bottom - 0.5) {
+					y = block.top;
+					moved = true;
+				}
+			}
+			if (!moved) break;
+		}
+		return y;
+	};
+
+	const breaks = [0];
+	let pageStart = 0;
+	for (const block of blocks) {
+		if (block.bottom <= pageStart + pageHeight + 0.5) continue; // still fits on the current page
+		const candidate = safeBreak(block.top);
+		if (candidate <= pageStart + 0.5) continue; // block starts on this page (or is taller than a page) — let it overflow
+		breaks.push(candidate);
+		pageStart = candidate;
+	}
+	// Safety net: if some oversized block leaves content past the last page, add plain breaks.
+	while (pageStart + pageHeight < total - 1 && breaks.length < 50) {
+		pageStart += pageHeight;
+		breaks.push(pageStart);
+	}
+	return breaks;
+}
+
 /**
- * Renders the live preview split into A4 sheets. It measures the real content
- * height and clips the same paper into 297mm-tall pages, so the on-screen
- * preview shows the page breaks (not just the downloaded PDF).
+ * Renders the live preview split into A4 sheets, breaking pages the way the PDF
+ * does — never slicing an entry or section in half — so the on-screen preview
+ * matches the downloaded document.
  */
 function PaginatedPreview({ cv }: { cv: CV }) {
 	const paperRef = useRef<HTMLDivElement>(null);
 	const sheetRef = useRef<HTMLDivElement>(null);
-	const [pages, setPages] = useState(1);
+	const [breaks, setBreaks] = useState<number[]>([0]);
 	useLayoutEffect(() => {
 		const paper = paperRef.current;
 		const sheet = sheetRef.current;
 		if (!paper || !sheet) return;
 		const update = () => {
-			const pageHeight = sheet.clientHeight || 1;
-			setPages(Math.max(1, Math.ceil(paper.scrollHeight / pageHeight)));
+			const next = computePageBreaks(paper, sheet.clientHeight || 1);
+			setBreaks((prev) =>
+				prev.length === next.length && prev.every((value, i) => Math.abs(value - next[i]) < 1) ? prev : next,
+			);
 		};
 		update();
 		const observer = new ResizeObserver(update);
@@ -474,18 +527,29 @@ function PaginatedPreview({ cv }: { cv: CV }) {
 
 	return (
 		<div className="cv-pages">
-			{Array.from({ length: pages }, (_, index) => (
-				<div className="cv-sheet" key={index} ref={index === 0 ? sheetRef : undefined}>
-					<div className="cv-sheet-slide" style={{ transform: `translateY(-${index * 297}mm)` }}>
-						<div ref={index === 0 ? paperRef : undefined}>
-							<Preview cv={cv} />
+			{breaks.map((offset, index) => {
+				// Clip each sheet to the content that belongs to it (up to the next break); the
+				// rest of the A4 sheet stays blank, exactly like the PDF pushing an entry down.
+				const contentHeight = index < breaks.length - 1 ? breaks[index + 1] - offset : undefined;
+				return (
+					<div className="cv-sheet" key={index} ref={index === 0 ? sheetRef : undefined}>
+						<div
+							className="cv-sheet-slide"
+							style={{
+								height: contentHeight !== undefined ? `${contentHeight}px` : undefined,
+								transform: `translateY(-${offset}px)`,
+							}}
+						>
+							<div ref={index === 0 ? paperRef : undefined}>
+								<Preview cv={cv} />
+							</div>
 						</div>
+						<span className="cv-sheet-num">
+							{index + 1} / {breaks.length}
+						</span>
 					</div>
-					<span className="cv-sheet-num">
-						{index + 1} / {pages}
-					</span>
-				</div>
-			))}
+				);
+			})}
 		</div>
 	);
 }
