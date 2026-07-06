@@ -1,5 +1,5 @@
 import type { ContactKey, CV, Education, Experience } from "./cv-data";
-import { PDFDownloadLink } from "@react-pdf/renderer";
+import { PDFDownloadLink, PDFViewer } from "@react-pdf/renderer";
 import { useEffect, useMemo, useState } from "react";
 import { contactItems, lines, PALETTE, parseLanguage, sample, storageKey } from "./cv-data";
 import { CVPdf } from "./pdf";
@@ -378,7 +378,7 @@ function Preview({ cv }: { cv: CV }) {
 				</header>
 				<section>
 					<h2>Profil</h2>
-					<p>{cv.profile}</p>
+					<p className="cv-profile">{cv.profile}</p>
 				</section>
 				<section>
 					<h2>Expériences</h2>
@@ -457,6 +457,13 @@ export function CVStudioApp() {
 	useEffect(() => {
 		localStorage.setItem(storageKey, JSON.stringify(cv));
 	}, [cv]);
+	// Paginated "PDF pages" view. The PDF is heavy to regenerate, so debounce the data behind it.
+	const [showPdf, setShowPdf] = useState(false);
+	const [debouncedCv, setDebouncedCv] = useState(cv);
+	useEffect(() => {
+		const timer = setTimeout(() => setDebouncedCv(cv), 500);
+		return () => clearTimeout(timer);
+	}, [cv]);
 	const baseName = useMemo(() => (cv.name || "CV").replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, ""), [cv.name]);
 	const fileName = `${baseName}.pdf`;
 	const exportData = () => {
@@ -490,6 +497,9 @@ export function CVStudioApp() {
 						<span>Les données restent dans ton navigateur.</span>
 					</div>
 					<div className="cv-toolbar-actions">
+						<button type="button" onClick={() => setShowPdf((value) => !value)}>
+							{showPdf ? "← Aperçu" : "Voir les pages"}
+						</button>
 						<button type="button" onClick={() => setCv(sample)}>
 							Réinitialiser
 						</button>
@@ -513,7 +523,15 @@ export function CVStudioApp() {
 						</PDFDownloadLink>
 					</div>
 				</div>
-				<Preview cv={cv} />
+				{showPdf ? (
+					<div className="cv-pdf-wrap">
+						<PDFViewer className="cv-pdf-viewer">
+							<CVPdf cv={debouncedCv} />
+						</PDFViewer>
+					</div>
+				) : (
+					<Preview cv={cv} />
+				)}
 			</section>
 		</div>
 	);

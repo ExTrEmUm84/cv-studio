@@ -139,8 +139,10 @@
 }
 .cv-toolbar {
 	display: flex;
+	flex-wrap: wrap;
 	justify-content: space-between;
 	align-items: center;
+	gap: 12px;
 	margin-bottom: 20px;
 }
 .cv-toolbar strong {
@@ -153,6 +155,8 @@
 }
 .cv-toolbar-actions {
 	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
 	gap: 10px;
 }
 .cv-toolbar button,
@@ -534,4 +538,21 @@
 .cv-check input {
 	width: auto;
 	accent-color: #79d4ff;
+}
+.cv-profile {
+	font-family: Georgia, "Times New Roman", serif;
+	font-style: italic;
+	font-size: 15px;
+	color: #3e4c59;
+}
+.cv-pdf-wrap {
+	height: calc(100vh - 120px);
+}
+.cv-pdf-viewer {
+	width: 100%;
+	height: 100%;
+	border: 0;
+	border-radius: 10px;
+	box-shadow: 0 22px 70px rgba(15, 23, 42, 0.16);
+	background: #fff;
 }

@@ -72,6 +72,7 @@ const patternDots = () => {
 
 const shared = StyleSheet.create({
 	body: { fontSize: 10, lineHeight: 1.4, color: "#1f2933" },
+	profile: { fontFamily: "Times-Italic", fontSize: 11, color: "#3e4c59", lineHeight: 1.5 },
 	name: { fontSize: 26, fontWeight: 700, marginBottom: 2 },
 	role: { fontSize: 12.5, fontWeight: 500, color: "#52606d", marginBottom: 12 },
 	item: { marginBottom: 8 },
@@ -230,7 +231,7 @@ function ClassicPdf({ cv }: { cv: CV }) {
 				</View>
 
 				<MainTitle accent={cv.accent}>Profil</MainTitle>
-				<Text>{cv.profile}</Text>
+				<Text style={shared.profile}>{cv.profile}</Text>
 
 				<MainTitle accent={cv.accent}>Expériences</MainTitle>
 				<ExperienceBlock cv={cv} />
@@ -339,7 +340,7 @@ function SidebarPdf({ cv }: { cv: CV }) {
 					<Text style={shared.role}>{cv.title}</Text>
 
 					<MainTitle accent={cv.accent}>Profil</MainTitle>
-					<Text>{cv.profile}</Text>
+					<Text style={shared.profile}>{cv.profile}</Text>
 
 					<MainTitle accent={cv.accent}>Expériences</MainTitle>
 					<ExperienceBlock cv={cv} />
