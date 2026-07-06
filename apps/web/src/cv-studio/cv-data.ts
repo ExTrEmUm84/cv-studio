@@ -73,6 +73,8 @@ export type CV = {
 	iconColor: string;
 	layout: Layout;
 	sectionOptions: Record<SectionId, SectionOptions>;
+	/** When true, a single entry (a job / diploma) may be split across a page break; otherwise it stays whole. */
+	allowEntryBreak: boolean;
 };
 
 /**
@@ -140,6 +142,7 @@ export const hydrateCv = (cv: CV): CV => ({
 	...cv,
 	layout: normalizeLayout(cv.layout),
 	sectionOptions: normalizeSectionOptions(cv.sectionOptions),
+	allowEntryBreak: cv.allowEntryBreak ?? false,
 });
 
 export const storageKey = "cv-studio-standalone-v2";
@@ -187,6 +190,7 @@ export const sample: CV = {
 	iconColor: "",
 	layout: defaultLayout(),
 	sectionOptions: defaultSectionOptions(),
+	allowEntryBreak: false,
 };
 
 export const lines = (value: string) =>

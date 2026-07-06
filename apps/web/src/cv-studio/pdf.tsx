@@ -173,7 +173,7 @@ const SectionContent = ({ id, cv, col }: { id: SectionId; cv: CV; col: Column })
 			return (
 				<>
 					{cv.experiences.map((item, index) => (
-						<View key={index} style={s.item} wrap={false}>
+						<View key={index} style={s.item} wrap={cv.allowEntryBreak ? undefined : false}>
 							<Text style={s.itemTitle}>
 								{item.role} — {item.company}
 							</Text>
@@ -187,7 +187,7 @@ const SectionContent = ({ id, cv, col }: { id: SectionId; cv: CV; col: Column })
 			return (
 				<>
 					{cv.education.map((item, index) => (
-						<View key={index} style={s.item} wrap={false}>
+						<View key={index} style={s.item} wrap={cv.allowEntryBreak ? undefined : false}>
 							<Text style={s.itemTitle}>{item.degree}</Text>
 							<Text style={s.itemMeta}>{[item.school, item.date, item.place].filter(Boolean).join(" · ")}</Text>
 						</View>
