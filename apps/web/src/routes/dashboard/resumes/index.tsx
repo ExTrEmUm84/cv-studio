@@ -91,13 +91,13 @@ function RouteComponent() {
 			return;
 		}
 
-		const resume = createLocalResume({ withSampleData });
+		const resume = createLocalResume({ name: withSampleData ? "CV exemple" : "Nouveau CV", withSampleData });
 		void navigate({ to: "/builder/$resumeId", params: { resumeId: resume.id } });
 	};
 
 	const handleImportResume = () => {
 		if (isStatic) {
-			const resume = createLocalResume({ withSampleData: true });
+			const resume = createLocalResume({ name: "CV exemple", withSampleData: true });
 			void navigate({ to: "/builder/$resumeId", params: { resumeId: resume.id } });
 			return;
 		}
@@ -107,27 +107,27 @@ function RouteComponent() {
 
 	const sortOptions = useMemo(() => {
 		return [
-			{ value: "lastUpdatedAt", label: i18n.t(msg`Last Updated`) },
-			{ value: "createdAt", label: i18n.t(msg`Created`) },
-			{ value: "name", label: i18n.t(msg`Name`) },
+			{ value: "lastUpdatedAt", label: isStatic ? "Dernière modification" : i18n.t(msg`Last Updated`) },
+			{ value: "createdAt", label: isStatic ? "Création" : i18n.t(msg`Created`) },
+			{ value: "name", label: isStatic ? "Nom" : i18n.t(msg`Name`) },
 		];
-	}, [i18n]);
+	}, [i18n, isStatic]);
 
 	return (
 		<div className="space-y-4">
 			<DashboardHeader
 				icon={ReadCvLogoIcon}
-				title={t`Resumes`}
+				title={isStatic ? "Mes CV" : t`Resumes`}
 				actions={
 					(resumes?.length ?? 0) > 0 ? (
 						<>
-							<Button size="sm" variant="outline" onClick={() => openDialog("resume.create", undefined)}>
+							<Button size="sm" variant="outline" onClick={() => handleCreateResume()}>
 								<PlusIcon />
-								<Trans>Create</Trans>
+								{isStatic ? "Créer" : <Trans>Create</Trans>}
 							</Button>
 							<Button size="sm" variant="outline" onClick={handleImportResume}>
 								<DownloadSimpleIcon />
-								<Trans>Import</Trans>
+								{isStatic ? "CV exemple" : <Trans>Import</Trans>}
 							</Button>
 						</>
 					) : undefined
@@ -139,13 +139,13 @@ function RouteComponent() {
 			<div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center">
 				<div className="grid min-w-0 gap-1.5 sm:flex sm:items-center sm:gap-2">
 					<Label className="text-muted-foreground text-xs sm:text-sm">
-						<Trans>Sort by</Trans>
+						{isStatic ? "Trier par" : <Trans>Sort by</Trans>}
 					</Label>
 					<Combobox
 						className="w-full sm:w-44"
 						value={sort}
 						options={sortOptions}
-						placeholder={t`Sort by`}
+						placeholder={isStatic ? "Trier par" : t`Sort by`}
 						onValueChange={(value) => {
 							if (!value) return;
 							void navigate({ search: (prev: Search) => ({ ...prev, sort: value as SortOption }) });
@@ -157,14 +157,14 @@ function RouteComponent() {
 					className={cn("grid min-w-0 gap-1.5 sm:flex sm:items-center sm:gap-2", { hidden: tagOptions.length === 0 })}
 				>
 					<Label className="text-muted-foreground text-xs sm:text-sm">
-						<Trans>Filter by</Trans>
+						{isStatic ? "Filtrer par" : <Trans>Filter by</Trans>}
 					</Label>
 					<Combobox
 						multiple
 						className="w-full sm:w-44"
 						value={tags}
 						options={tagOptions}
-						placeholder={t`Filter by`}
+						placeholder={isStatic ? "Filtrer par" : t`Filter by`}
 						onValueChange={(value) => {
 							void navigate({ search: (prev: Search) => ({ ...prev, tags: value ?? [] }) });
 						}}
@@ -178,7 +178,7 @@ function RouteComponent() {
 						</InputGroupAddon>
 						<InputGroupInput
 							value={search}
-							placeholder={t`Search resumes...`}
+							placeholder={isStatic ? "Rechercher un CV..." : t`Search resumes...`}
 							onChange={(event) => {
 								const value = event.target.value;
 								void navigate({ search: (prev: Search) => ({ ...prev, search: value }) });
@@ -196,7 +196,7 @@ function RouteComponent() {
 							render={<Link to="." search={(prev: Search) => ({ ...prev, view: "grid" })} />}
 						>
 							<GridFourIcon />
-							<Trans>Grid</Trans>
+							{isStatic ? "Grille" : <Trans>Grid</Trans>}
 						</TabsTrigger>
 
 						<TabsTrigger
@@ -206,7 +206,7 @@ function RouteComponent() {
 							render={<Link to="." search={(prev: Search) => ({ ...prev, view: "list" })} />}
 						>
 							<ListIcon />
-							<Trans>List</Trans>
+							{isStatic ? "Liste" : <Trans>List</Trans>}
 						</TabsTrigger>
 					</TabsList>
 				</Tabs>
