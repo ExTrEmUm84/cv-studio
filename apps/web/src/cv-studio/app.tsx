@@ -1,6 +1,6 @@
 import type { ContactKey, CV, Education, Experience } from "./cv-data";
-import { PDFDownloadLink, PDFViewer } from "@react-pdf/renderer";
-import { useEffect, useMemo, useState } from "react";
+import { PDFDownloadLink } from "@react-pdf/renderer";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { contactItems, lines, PALETTE, parseLanguage, sample, storageKey } from "./cv-data";
 import { CVPdf } from "./pdf";
 import "./styles.css";
@@ -445,6 +445,51 @@ function Preview({ cv }: { cv: CV }) {
 	);
 }
 
+/**
+ * Renders the live preview split into A4 sheets. It measures the real content
+ * height and clips the same paper into 297mm-tall pages, so the on-screen
+ * preview shows the page breaks (not just the downloaded PDF).
+ */
+function PaginatedPreview({ cv }: { cv: CV }) {
+	const paperRef = useRef<HTMLDivElement>(null);
+	const sheetRef = useRef<HTMLDivElement>(null);
+	const [pages, setPages] = useState(1);
+	useLayoutEffect(() => {
+		const paper = paperRef.current;
+		const sheet = sheetRef.current;
+		if (!paper || !sheet) return;
+		const update = () => {
+			const pageHeight = sheet.clientHeight || 1;
+			setPages(Math.max(1, Math.ceil(paper.scrollHeight / pageHeight)));
+		};
+		update();
+		const observer = new ResizeObserver(update);
+		observer.observe(paper);
+		window.addEventListener("resize", update);
+		return () => {
+			observer.disconnect();
+			window.removeEventListener("resize", update);
+		};
+	}, []);
+
+	return (
+		<div className="cv-pages">
+			{Array.from({ length: pages }, (_, index) => (
+				<div className="cv-sheet" key={index} ref={index === 0 ? sheetRef : undefined}>
+					<div className="cv-sheet-slide" style={{ transform: `translateY(-${index * 297}mm)` }}>
+						<div ref={index === 0 ? paperRef : undefined}>
+							<Preview cv={cv} />
+						</div>
+					</div>
+					<span className="cv-sheet-num">
+						{index + 1} / {pages}
+					</span>
+				</div>
+			))}
+		</div>
+	);
+}
+
 function CVStudioMain() {
 	const [cv, setCv] = useState<CV>(() => {
 		try {
@@ -456,13 +501,6 @@ function CVStudioMain() {
 	});
 	useEffect(() => {
 		localStorage.setItem(storageKey, JSON.stringify(cv));
-	}, [cv]);
-	// Paginated "PDF pages" view. The PDF is heavy to regenerate, so debounce the data behind it.
-	const [showPdf, setShowPdf] = useState(false);
-	const [debouncedCv, setDebouncedCv] = useState(cv);
-	useEffect(() => {
-		const timer = setTimeout(() => setDebouncedCv(cv), 500);
-		return () => clearTimeout(timer);
 	}, [cv]);
 	const baseName = useMemo(() => (cv.name || "CV").replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, ""), [cv.name]);
 	const fileName = `${baseName}.pdf`;
@@ -497,9 +535,6 @@ function CVStudioMain() {
 						<span>Les données restent dans ton navigateur.</span>
 					</div>
 					<div className="cv-toolbar-actions">
-						<button type="button" onClick={() => setShowPdf((value) => !value)}>
-							{showPdf ? "← Aperçu" : "Voir les pages"}
-						</button>
 						<button type="button" onClick={() => setCv(sample)}>
 							Réinitialiser
 						</button>
@@ -523,15 +558,7 @@ function CVStudioMain() {
 						</PDFDownloadLink>
 					</div>
 				</div>
-				{showPdf ? (
-					<div className="cv-pdf-wrap">
-						<PDFViewer className="cv-pdf-viewer">
-							<CVPdf cv={debouncedCv} />
-						</PDFViewer>
-					</div>
-				) : (
-					<Preview cv={cv} />
-				)}
+				<PaginatedPreview cv={cv} />
 			</section>
 		</div>
 	);
