@@ -26,6 +26,7 @@ import { CommandPalette } from "@/features/command-palette";
 import { ThemeProvider } from "@/features/theme/provider";
 import { ConfirmDialogProvider } from "@/hooks/use-confirm";
 import { PromptDialogProvider } from "@/hooks/use-prompt";
+import { isCvStudioStatic } from "@/libs/app-mode";
 import { getSession } from "@/libs/auth/session";
 import { getLocale, isRTL, loadLocale } from "@/libs/locale";
 import { client } from "@/libs/orpc/client";
@@ -40,11 +41,11 @@ type RouterContext = {
 	flags: FeatureFlags;
 };
 
-const appName = "Reactive Resume";
-const tagline = "A free and open-source resume builder";
+const appName = "CV Studio";
+const tagline = "Un éditeur de CV simple avec export PDF";
 const title = `${appName} — ${tagline}`;
 const description =
-	"Reactive Resume is a free and open-source resume builder that simplifies the process of creating, updating, and sharing your resume.";
+	"CV Studio permet de créer, personnaliser et exporter un CV en PDF directement depuis le navigateur.";
 
 export const Route = createRootRouteWithContext<RouterContext>()({
 	component: RootComponent,
@@ -67,10 +68,10 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 				{ name: "viewport", content: "width=device-width, initial-scale=1" },
 				// Meta Tags
 				{ name: "theme-color", content: "#09090B" },
-				{ name: "application-name", content: "Reactive Resume" },
+				{ name: "application-name", content: "CV Studio" },
 				{ name: "mobile-web-app-capable", content: "yes" },
 				{ name: "apple-mobile-web-app-capable", content: "yes" },
-				{ name: "apple-mobile-web-app-title", content: "Reactive Resume" },
+				{ name: "apple-mobile-web-app-title", content: "CV Studio" },
 				{ name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
 				// Twitter Tags
 				{ property: "twitter:image", content: `${appUrl}/opengraph/banner.jpg` },
@@ -90,8 +91,10 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 		const [theme, locale, session, flags] = await Promise.all([
 			getTheme(),
 			getLocale(),
-			getSession(),
-			client.flags.get(),
+			isCvStudioStatic() ? null : getSession(),
+			isCvStudioStatic()
+				? { disableSignups: true, disableEmailAuth: true, showSponsors: false, smtpEnabled: false }
+				: client.flags.get(),
 		]);
 
 		await loadLocale(locale);

@@ -1,6 +1,6 @@
 {
-	"name": "reactive-resume",
-	"description": "Reactive Resume is a free and open-source resume builder that simplifies the process of creating, updating, and sharing your resume.",
+	"name": "cv-studio",
+	"description": "CV Studio is a simple browser-based CV editor with PDF export.",
 	"version": "5.2.1",
 	"private": true,
 	"license": "MIT",
@@ -21,6 +21,7 @@
 	],
 	"scripts": {
 		"build": "turbo run build",
+		"build:pages": "VITE_CV_STUDIO_STATIC=true VITE_BASE_PATH=/reactive-resume/ pnpm --filter web build",
 		"doctor": "turbo run doctor",
 		"check": "biome check --write --unsafe .",
 		"db:generate": "turbo run db:generate --filter=@reactive-resume/db",
