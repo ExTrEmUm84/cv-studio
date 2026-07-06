@@ -301,14 +301,6 @@ function LayoutEditor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 				: <strong>Couper</strong> (peut passer sur 2 pages), <strong>Grouper</strong> (reste entière),{" "}
 				<strong>Nouvelle page</strong>.
 			</p>
-			<label className="cv-check">
-				<input
-					type="checkbox"
-					checked={cv.allowEntryBreak}
-					onChange={(event) => setCv({ ...cv, allowEntryBreak: event.target.checked })}
-				/>
-				<span>Autoriser une entrée (expérience/formation) à être coupée entre deux pages</span>
-			</label>
 			<DndContext
 				sensors={sensors}
 				collisionDetection={closestCorners}
