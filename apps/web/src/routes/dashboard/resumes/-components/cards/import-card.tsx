@@ -1,6 +1,7 @@
 import { t } from "@lingui/core/macro";
 import { DownloadSimpleIcon } from "@phosphor-icons/react";
 import { useDialogStore } from "@/dialogs/store";
+import { isCvStudioStatic } from "@/libs/app-mode";
 import { BaseCard } from "./base-card";
 
 type ImportResumeCardProps = {
@@ -9,11 +10,12 @@ type ImportResumeCardProps = {
 
 export function ImportResumeCard({ onImport }: ImportResumeCardProps) {
 	const { openDialog } = useDialogStore();
+	const isStatic = isCvStudioStatic();
 
 	return (
 		<BaseCard
-			title={t`Import an existing resume`}
-			description={t`Continue where you left off`}
+			title={isStatic ? "Créer depuis un exemple" : t`Import an existing resume`}
+			description={isStatic ? "Démarrer avec un CV déjà rempli" : t`Continue where you left off`}
 			onClick={() => (onImport ? onImport() : openDialog("resume.import", undefined))}
 		>
 			<div className="absolute inset-0 flex items-center justify-center">
