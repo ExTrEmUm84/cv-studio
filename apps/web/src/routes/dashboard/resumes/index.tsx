@@ -113,6 +113,140 @@ function RouteComponent() {
 		];
 	}, [i18n, isStatic]);
 
+	const staticControls = (
+		<div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center">
+			<label className="grid min-w-0 gap-1.5 sm:flex sm:items-center sm:gap-2">
+				<span className="text-muted-foreground text-xs sm:text-sm">Trier par</span>
+				<select
+					className="h-9 rounded-md border border-border bg-background px-3 text-sm"
+					value={sort}
+					onChange={(event) => {
+						void navigate({ search: (prev: Search) => ({ ...prev, sort: event.target.value as SortOption }) });
+					}}
+				>
+					{sortOptions.map((option) => (
+						<option key={option.value} value={option.value}>
+							{option.label}
+						</option>
+					))}
+				</select>
+			</label>
+
+			{(resumes?.length ?? 0) > 5 && (
+				<label className="grid min-w-0 gap-1.5 sm:flex sm:items-center sm:gap-2">
+					<span className="text-muted-foreground text-xs sm:text-sm">Rechercher</span>
+					<input
+						className="h-9 rounded-md border border-border bg-background px-3 text-sm"
+						value={search}
+						placeholder="Rechercher un CV..."
+						onChange={(event) => {
+							void navigate({ search: (prev: Search) => ({ ...prev, search: event.target.value }) });
+						}}
+					/>
+				</label>
+			)}
+
+			<div className="w-full sm:w-auto ltr:sm:ms-auto rtl:sm:me-auto">
+				<div className="grid grid-cols-2 rounded-md border border-border bg-muted p-1">
+					<Link
+						to="."
+						search={(prev: Search) => ({ ...prev, view: "grid" })}
+						className={cn("flex h-8 items-center justify-center gap-2 rounded-sm px-3 text-sm", {
+							"bg-background shadow-sm": view === "grid",
+						})}
+					>
+						<GridFourIcon /> Grille
+					</Link>
+					<Link
+						to="."
+						search={(prev: Search) => ({ ...prev, view: "list" })}
+						className={cn("flex h-8 items-center justify-center gap-2 rounded-sm px-3 text-sm", {
+							"bg-background shadow-sm": view === "list",
+						})}
+					>
+						<ListIcon /> Liste
+					</Link>
+				</div>
+			</div>
+		</div>
+	);
+
+	const serverControls = (
+		<div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center">
+			<div className="grid min-w-0 gap-1.5 sm:flex sm:items-center sm:gap-2">
+				<Label className="text-muted-foreground text-xs sm:text-sm">
+					<Trans>Sort by</Trans>
+				</Label>
+				<Combobox
+					className="w-full sm:w-44"
+					value={sort}
+					options={sortOptions}
+					placeholder={t`Sort by`}
+					onValueChange={(value) => {
+						if (!value) return;
+						void navigate({ search: (prev: Search) => ({ ...prev, sort: value as SortOption }) });
+					}}
+				/>
+			</div>
+
+			<div className={cn("grid min-w-0 gap-1.5 sm:flex sm:items-center sm:gap-2", { hidden: tagOptions.length === 0 })}>
+				<Label className="text-muted-foreground text-xs sm:text-sm">
+					<Trans>Filter by</Trans>
+				</Label>
+				<Combobox
+					multiple
+					className="w-full sm:w-44"
+					value={tags}
+					options={tagOptions}
+					placeholder={t`Filter by`}
+					onValueChange={(value) => {
+						void navigate({ search: (prev: Search) => ({ ...prev, tags: value ?? [] }) });
+					}}
+				/>
+			</div>
+
+			{(resumes?.length ?? 0) > 5 && (
+				<InputGroup className="w-full sm:w-56 lg:w-64">
+					<InputGroupAddon align="inline-start">
+						<MagnifyingGlassIcon />
+					</InputGroupAddon>
+					<InputGroupInput
+						value={search}
+						placeholder={t`Search resumes...`}
+						onChange={(event) => {
+							const value = event.target.value;
+							void navigate({ search: (prev: Search) => ({ ...prev, search: value }) });
+						}}
+					/>
+				</InputGroup>
+			)}
+
+			<Tabs className="w-full sm:w-auto ltr:sm:ms-auto rtl:sm:me-auto" value={view}>
+				<TabsList className="grid w-full grid-cols-2 sm:inline-flex sm:w-fit">
+					<TabsTrigger
+						value="grid"
+						nativeButton={false}
+						className="rounded-r-none"
+						render={<Link to="." search={(prev: Search) => ({ ...prev, view: "grid" })} />}
+					>
+						<GridFourIcon />
+						<Trans>Grid</Trans>
+					</TabsTrigger>
+
+					<TabsTrigger
+						value="list"
+						nativeButton={false}
+						className="rounded-l-none"
+						render={<Link to="." search={(prev: Search) => ({ ...prev, view: "list" })} />}
+					>
+						<ListIcon />
+						<Trans>List</Trans>
+					</TabsTrigger>
+				</TabsList>
+			</Tabs>
+		</div>
+	);
+
 	return (
 		<div className="space-y-4">
 			<DashboardHeader
@@ -136,81 +270,7 @@ function RouteComponent() {
 
 			<Separator />
 
-			<div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center">
-				<div className="grid min-w-0 gap-1.5 sm:flex sm:items-center sm:gap-2">
-					<Label className="text-muted-foreground text-xs sm:text-sm">
-						{isStatic ? "Trier par" : <Trans>Sort by</Trans>}
-					</Label>
-					<Combobox
-						className="w-full sm:w-44"
-						value={sort}
-						options={sortOptions}
-						placeholder={isStatic ? "Trier par" : t`Sort by`}
-						onValueChange={(value) => {
-							if (!value) return;
-							void navigate({ search: (prev: Search) => ({ ...prev, sort: value as SortOption }) });
-						}}
-					/>
-				</div>
-
-				<div
-					className={cn("grid min-w-0 gap-1.5 sm:flex sm:items-center sm:gap-2", { hidden: tagOptions.length === 0 })}
-				>
-					<Label className="text-muted-foreground text-xs sm:text-sm">
-						{isStatic ? "Filtrer par" : <Trans>Filter by</Trans>}
-					</Label>
-					<Combobox
-						multiple
-						className="w-full sm:w-44"
-						value={tags}
-						options={tagOptions}
-						placeholder={isStatic ? "Filtrer par" : t`Filter by`}
-						onValueChange={(value) => {
-							void navigate({ search: (prev: Search) => ({ ...prev, tags: value ?? [] }) });
-						}}
-					/>
-				</div>
-
-				{(resumes?.length ?? 0) > 5 && (
-					<InputGroup className="w-full sm:w-56 lg:w-64">
-						<InputGroupAddon align="inline-start">
-							<MagnifyingGlassIcon />
-						</InputGroupAddon>
-						<InputGroupInput
-							value={search}
-							placeholder={isStatic ? "Rechercher un CV..." : t`Search resumes...`}
-							onChange={(event) => {
-								const value = event.target.value;
-								void navigate({ search: (prev: Search) => ({ ...prev, search: value }) });
-							}}
-						/>
-					</InputGroup>
-				)}
-
-				<Tabs className="w-full sm:w-auto ltr:sm:ms-auto rtl:sm:me-auto" value={view}>
-					<TabsList className="grid w-full grid-cols-2 sm:inline-flex sm:w-fit">
-						<TabsTrigger
-							value="grid"
-							nativeButton={false}
-							className="rounded-r-none"
-							render={<Link to="." search={(prev: Search) => ({ ...prev, view: "grid" })} />}
-						>
-							<GridFourIcon />
-							{isStatic ? "Grille" : <Trans>Grid</Trans>}
-						</TabsTrigger>
-
-						<TabsTrigger
-							value="list"
-							nativeButton={false}
-							className="rounded-l-none"
-							render={<Link to="." search={(prev: Search) => ({ ...prev, view: "list" })} />}
-						>
-							<ListIcon />
-							{isStatic ? "Liste" : <Trans>List</Trans>}
-						</TabsTrigger>
-					</TabsList>
-				</Tabs>
-			</div>
+			{isStatic ? staticControls : serverControls}
 
 			{view === "list" ? (
 				<ListView
