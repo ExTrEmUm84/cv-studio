@@ -13,9 +13,16 @@ const ICON_PROPS = {
 	strokeLinejoin: "round",
 } as const;
 
-function ContactIconHtml({ name }: { name: ContactKey }) {
+function ContactIconHtml({ name, color }: { name: ContactKey; color?: string }) {
 	return (
-		<svg className="cv-contact-icon" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
+		<svg
+			className="cv-contact-icon"
+			viewBox="0 0 24 24"
+			width="13"
+			height="13"
+			aria-hidden="true"
+			style={color ? { color } : undefined}
+		>
 			{name === "email" && (
 				<>
 					<path d="M3 5.5h18v13H3z" {...ICON_PROPS} />
@@ -203,6 +210,16 @@ function Editor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 					<input type="checkbox" checked={cv.showIcons} onChange={(event) => set("showIcons", event.target.checked)} />
 					<span>Icônes de contact (décoche pour une version simple)</span>
 				</label>
+				{cv.showIcons && (
+					<label className="cv-field cv-icon-color">
+						<span>Couleur des icônes</span>
+						<input
+							type="color"
+							value={cv.iconColor || "#9fc3e8"}
+							onChange={(event) => set("iconColor", event.target.value)}
+						/>
+					</label>
+				)}
 			</section>
 			<section className="cv-panel">
 				<h2>Photo</h2>
@@ -313,7 +330,7 @@ function SidebarInfo({ cv }: { cv: CV }) {
 			<div className="cv-side-contact">
 				{contactItems(cv).map((item) => (
 					<div key={item.key} className="cv-contact-line">
-						{cv.showIcons && <ContactIconHtml name={item.key} />}
+						{cv.showIcons && <ContactIconHtml name={item.key} color={cv.iconColor} />}
 						<span>{item.value}</span>
 					</div>
 				))}
@@ -362,7 +379,7 @@ function Preview({ cv }: { cv: CV }) {
 								<div className="cv-contact cv-contact-row">
 									{contactItems(cv).map((item) => (
 										<span key={item.key} className="cv-contact-chip">
-											<ContactIconHtml name={item.key} />
+											<ContactIconHtml name={item.key} color={cv.iconColor} />
 											{item.value}
 										</span>
 									))}

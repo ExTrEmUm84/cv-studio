@@ -18,6 +18,7 @@ export type CV = {
 	accent: string;
 	template: "classic" | "sidebar" | "minimal";
 	showIcons: boolean;
+	iconColor: string;
 };
 
 export const storageKey = "cv-studio-standalone-v2";
@@ -62,6 +63,7 @@ export const sample: CV = {
 	accent: "#123047",
 	template: "sidebar",
 	showIcons: true,
+	iconColor: "",
 };
 
 export const lines = (value: string) =>

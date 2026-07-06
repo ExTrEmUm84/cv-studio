@@ -462,11 +462,11 @@
 }
 .cv-contact-line {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	gap: 9px;
 	color: rgba(255, 255, 255, 0.86);
 	font-size: 13.5px;
-	line-height: 1.1;
+	line-height: 1.25;
 }
 .cv-contact-line span {
 	overflow-wrap: anywhere;
@@ -474,6 +474,7 @@
 }
 .cv-contact-icon {
 	flex: 0 0 auto;
+	margin-top: 2px;
 	opacity: 0.85;
 }
 .cv-contact-row {
@@ -483,7 +484,7 @@
 }
 .cv-contact-chip {
 	display: inline-flex;
-	align-items: center;
+	align-items: flex-start;
 	gap: 6px;
 }
 .cv-contact-chip .cv-contact-icon {

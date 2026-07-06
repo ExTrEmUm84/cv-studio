@@ -7,7 +7,7 @@ const ICON_STROKE = { strokeWidth: 2, fill: "none", strokeLinecap: "round", stro
 
 /** Small line icon drawn per contact field (email/phone/city/nationality/age). */
 const ContactIcon = ({ name, color, size = 9 }: { name: ContactKey; color: string; size?: number }) => (
-	<Svg width={size} height={size} viewBox="0 0 24 24">
+	<Svg width={size} height={size} viewBox="0 0 24 24" style={{ marginTop: 1 }}>
 		{name === "email" && (
 			<>
 				<Path d="M3 5.5h18v13H3z" stroke={color} {...ICON_STROKE} />
@@ -101,7 +101,7 @@ const classicStyles = StyleSheet.create({
 	},
 	photo: { width: 98, height: 98, borderRadius: 49, objectFit: "cover" },
 	contactRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 5 },
-	contactChip: { flexDirection: "row", alignItems: "center", marginRight: 12, marginBottom: 3 },
+	contactChip: { flexDirection: "row", alignItems: "flex-start", marginRight: 12, marginBottom: 3 },
 	contactText: { fontSize: 9.5, lineHeight: 1, color: "#7b8794", marginLeft: 4 },
 	langRight: { alignItems: "flex-end" },
 	tag: {
@@ -141,7 +141,7 @@ const sidebarStyles = StyleSheet.create({
 	},
 	photo: { width: "100%", height: "100%", borderRadius: 63, objectFit: "cover" },
 	sideText: { fontSize: 9.5, color: "rgba(255,255,255,0.88)", marginBottom: 4 },
-	contactRow: { flexDirection: "row", alignItems: "center", marginBottom: 5 },
+	contactRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 5 },
 	contactText: { fontSize: 9.5, lineHeight: 1, color: "rgba(255,255,255,0.88)", marginLeft: 6, flex: 1 },
 	sideTag: {
 		backgroundColor: "rgba(255,255,255,0.16)",
@@ -215,7 +215,7 @@ function ClassicPdf({ cv }: { cv: CV }) {
 							{cv.showIcons ? (
 								contactItems(cv).map((item) => (
 									<View key={item.key} style={classicStyles.contactChip}>
-										<ContactIcon name={item.key} color="#7b8794" size={8.5} />
+										<ContactIcon name={item.key} color={cv.iconColor || "#7b8794"} size={8.5} />
 										<Text style={classicStyles.contactText}>{item.value}</Text>
 									</View>
 								))
@@ -300,7 +300,7 @@ function SidebarPdf({ cv }: { cv: CV }) {
 					<SideTitle>Coordonnées</SideTitle>
 					{contactItems(cv).map((item) => (
 						<View key={item.key} style={sidebarStyles.contactRow}>
-							{cv.showIcons && <ContactIcon name={item.key} color="rgba(255,255,255,0.72)" />}
+							{cv.showIcons && <ContactIcon name={item.key} color={cv.iconColor || "#e6edf5"} />}
 							<Text style={sidebarStyles.contactText}>{item.value}</Text>
 						</View>
 					))}
