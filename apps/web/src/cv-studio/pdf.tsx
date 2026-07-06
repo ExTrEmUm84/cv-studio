@@ -1,9 +1,30 @@
-import type { ReactNode } from "react";
-import type { ContactKey, CV } from "./cv-data";
+import type { ComponentProps, ReactNode } from "react";
+import type { ContactKey, CV, PageLayout, SectionId } from "./cv-data";
 import { Circle, Document, Image, Page, Path, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
-import { contactItems, lines, parseLanguage } from "./cv-data";
+import { contactItems, lines, normalizeLayout, parseLanguage, SECTION_LABELS } from "./cv-data";
+
+/** react-pdf's Style type, derived from the Page style prop (avoids depending on @react-pdf/types). */
+type Style = NonNullable<ComponentProps<typeof Page>["style"]>;
+
+const A4_WIDTH = 595.28;
+const A4_HEIGHT = 841.89;
 
 const ICON_STROKE = { strokeWidth: 2, fill: "none", strokeLinecap: "round", strokeLinejoin: "round" } as const;
+
+/** Blend a hex colour toward white by `alpha` (1 = full colour, 0 = white). Returns a solid rgb(). */
+const tint = (hex: string, alpha: number): string => {
+	const clean = hex.replace("#", "");
+	const full =
+		clean.length === 3
+			? clean
+					.split("")
+					.map((c) => c + c)
+					.join("")
+			: clean;
+	const num = Number.parseInt(full || "123047", 16);
+	const mix = (channel: number) => Math.round(channel * alpha + 255 * (1 - alpha));
+	return `rgb(${mix((num >> 16) & 255)},${mix((num >> 8) & 255)},${mix(num & 255)})`;
+};
 
 /** Small line icon drawn per contact field (email/phone/city/nationality/age). */
 const ContactIcon = ({ name, color, size = 9 }: { name: ContactKey; color: string; size?: number }) => (
@@ -56,14 +77,11 @@ const Dots = ({ count, filled, empty }: { count: number; filled: string; empty: 
 	</View>
 );
 
-const A4_HEIGHT = 841.89;
-const SIDE_WIDTH = 200;
-
-/** Subtle "wallpaper" dot grid painted over the sidebar background. */
-const patternDots = () => {
+/** Subtle "wallpaper" dot grid painted over a coloured sidebar background. */
+const patternDots = (width: number) => {
 	const dots = [];
 	for (let y = 16; y < A4_HEIGHT; y += 15) {
-		for (let x = 10; x < SIDE_WIDTH; x += 15) {
+		for (let x = 10; x < width; x += 15) {
 			dots.push(<Circle key={`${x}-${y}`} cx={x} cy={y} r={1.1} fill="#ffffff" fillOpacity={0.06} />);
 		}
 	}
@@ -71,290 +89,586 @@ const patternDots = () => {
 };
 
 const shared = StyleSheet.create({
-	body: { fontSize: 10, lineHeight: 1.4, color: "#1f2933" },
-	profile: { fontFamily: "Times-Italic", fontSize: 11, color: "#3e4c59", lineHeight: 1.5 },
-	name: { fontSize: 26, fontWeight: 700, marginBottom: 2 },
-	role: { fontSize: 12.5, fontWeight: 500, color: "#52606d", marginBottom: 12 },
-	item: { marginBottom: 8 },
-	itemTitle: { fontSize: 11, fontWeight: 700, marginBottom: 1.5 },
-	itemMeta: { fontSize: 9, color: "#7b8794", marginBottom: 2.5 },
-	tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 1 },
+	name: { fontSize: 24, fontWeight: 700, marginBottom: 2, letterSpacing: -0.3 },
+	role: { fontSize: 12, fontWeight: 400, marginBottom: 2 },
 });
 
-const classicStyles = StyleSheet.create({
-	page: {
-		paddingVertical: 32,
-		paddingHorizontal: 40,
-		fontFamily: "Helvetica",
-		color: "#1f2933",
-		fontSize: 10,
-		lineHeight: 1.4,
-	},
-	header: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 18,
-		marginBottom: 13,
-		paddingBottom: 12,
-		borderBottomWidth: 1,
-		borderBottomColor: "#e4e7eb",
-	},
-	photo: { width: 98, height: 98, borderRadius: 49, objectFit: "cover" },
-	contactRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 5 },
-	contactChip: { flexDirection: "row", alignItems: "flex-start", marginRight: 12, marginBottom: 3 },
-	contactText: { fontSize: 9.5, lineHeight: 1, color: "#7b8794", marginLeft: 4 },
-	langRight: { alignItems: "flex-end" },
-	tag: {
-		backgroundColor: "#eef2f6",
-		borderRadius: 9,
-		paddingHorizontal: 8,
-		paddingVertical: 4,
-		marginBottom: 4,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	tagText: { color: "#3e4c59", fontSize: 9, lineHeight: 1 },
-	lang: {
-		flexDirection: "row",
-		justifyContent: "space-between",
-		alignItems: "center",
-		borderBottomWidth: 1,
-		borderBottomColor: "#f0f2f5",
-		paddingBottom: 3.5,
-		marginBottom: 3.5,
-	},
+// ---------------------------------------------------------------------------
+// Column styling — one parameterised factory drives every template's columns.
+// ---------------------------------------------------------------------------
+
+type ColumnConfig = {
+	side: boolean; // narrow sidebar column? (changes languages/interests layout)
+	text: string; // body / description text colour
+	muted: string; // meta line colour
+	title: string; // section-title text colour
+	rule?: string; // section-title underline colour (omit for no rule)
+	heading: string; // entry-title colour
+	tagBg: string;
+	tagText: string;
+	dotFilled: string;
+	dotEmpty: string;
+	langBorder: string; // divider under a language row (main variant only)
+};
+
+const makeColumn = (c: ColumnConfig) => ({
+	cfg: c,
+	styles: StyleSheet.create({
+		titleWrap: { marginTop: c.side ? 16 : 13, marginBottom: c.side ? 7 : 6 },
+		titleText: { fontSize: c.side ? 9 : 9.5, letterSpacing: 1.3, color: c.title, fontWeight: 700 },
+		profile: {
+			fontFamily: "Times-Italic",
+			fontSize: c.side ? 9.5 : 11,
+			color: c.side ? c.text : "#3e4c59",
+			lineHeight: 1.5,
+		},
+		item: { marginBottom: 8 },
+		itemTitle: { fontSize: c.side ? 9.5 : 11, fontWeight: 700, color: c.heading, marginBottom: 1.5 },
+		itemMeta: { fontSize: 9, color: c.muted, marginBottom: 2.5 },
+		itemText: { fontSize: c.side ? 9 : 10, color: c.text, lineHeight: 1.4 },
+		tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 1 },
+		tag: {
+			backgroundColor: c.tagBg,
+			borderRadius: 8,
+			paddingHorizontal: 7,
+			paddingVertical: 4,
+			marginBottom: 4,
+			alignItems: "center",
+			justifyContent: "center",
+		},
+		tagText: { color: c.tagText, fontSize: c.side ? 8.5 : 9, lineHeight: 1 },
+		langRow: {
+			flexDirection: "row",
+			justifyContent: "space-between",
+			alignItems: "center",
+			borderBottomWidth: 1,
+			borderBottomColor: c.langBorder,
+			paddingBottom: 3.5,
+			marginBottom: 3.5,
+		},
+		langBlock: { marginBottom: 11 },
+		langName: { fontSize: 9.5, fontWeight: 700, color: c.heading, marginBottom: 1.5 },
+		langLevel: { fontSize: 9, color: c.muted },
+		interest: { fontSize: c.side ? 9.5 : 10, color: c.text, marginBottom: 4 },
+	}),
 });
 
-const sidebarStyles = StyleSheet.create({
-	page: { flexDirection: "row", fontFamily: "Helvetica", color: "#1f2933", fontSize: 10, lineHeight: 1.4 },
-	bg: { position: "absolute", top: 0, left: 0, width: SIDE_WIDTH, height: "100%" },
-	side: { width: SIDE_WIDTH, paddingTop: 30, paddingBottom: 26, paddingHorizontal: 20 },
-	main: { flex: 1, paddingTop: 34, paddingBottom: 30, paddingHorizontal: 28 },
-	photoWrap: {
-		width: 132,
-		height: 132,
-		borderRadius: 66,
-		alignSelf: "center",
-		marginBottom: 20,
-		padding: 3,
-		backgroundColor: "rgba(255,255,255,0.16)",
-	},
-	photo: { width: "100%", height: "100%", borderRadius: 63, objectFit: "cover" },
-	sideText: { fontSize: 9.5, color: "rgba(255,255,255,0.88)", marginBottom: 4 },
-	contactRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 5 },
-	contactText: { fontSize: 9.5, lineHeight: 1, color: "rgba(255,255,255,0.88)", marginLeft: 6, flex: 1 },
-	sideTag: {
-		backgroundColor: "rgba(255,255,255,0.16)",
-		borderRadius: 8,
-		paddingHorizontal: 7,
-		paddingVertical: 4,
-		marginRight: 4,
-		marginBottom: 4,
-		alignItems: "center",
-		justifyContent: "center",
-	},
-	sideTagText: { color: "#ffffff", fontSize: 8.5, lineHeight: 1 },
-	sideLangName: { color: "#ffffff", fontWeight: 700, fontSize: 9.5, marginBottom: 1.5 },
-	langLevel: { fontSize: 9, color: "rgba(255,255,255,0.7)" },
-	dot: { color: "rgba(255,255,255,0.6)" },
-});
+type Column = ReturnType<typeof makeColumn>;
 
-/** Section title with a short accent underline (modern, softer than a full rule). */
-const MainTitle = ({ children, accent }: { children: string; accent: string }) => (
-	<View style={{ marginTop: 12, marginBottom: 6 }} minPresenceAhead={46}>
-		<Text style={{ fontSize: 9.5, letterSpacing: 1.3, color: accent, fontWeight: 700 }}>{children.toUpperCase()}</Text>
-		<View style={{ width: 26, height: 2, backgroundColor: accent, borderRadius: 1, marginTop: 4 }} />
+const SectionTitle = ({ label, col }: { label: string; col: Column }) => (
+	<View style={col.styles.titleWrap} minPresenceAhead={46}>
+		<Text style={col.styles.titleText}>{label.toUpperCase()}</Text>
+		{col.cfg.rule ? (
+			<View style={{ width: 24, height: 2, backgroundColor: col.cfg.rule, borderRadius: 1, marginTop: 4 }} />
+		) : null}
 	</View>
 );
 
-const SideTitle = ({ children }: { children: string }) => (
-	<View style={{ marginTop: 18, marginBottom: 8 }} minPresenceAhead={46}>
-		<Text style={{ fontSize: 9, letterSpacing: 1.4, color: "#ffffff", fontWeight: 700 }}>{children.toUpperCase()}</Text>
-		<View style={{ width: 22, height: 2, backgroundColor: "rgba(255,255,255,0.55)", borderRadius: 1, marginTop: 4 }} />
-	</View>
-);
-
-/** Wraps a whole section so it never splits across pages — it moves to the next page as a block. */
-const KeepTogether = ({ children }: { children: ReactNode }) => <View wrap={false}>{children}</View>;
-
-const ExperienceBlock = ({ cv }: { cv: CV }) => (
-	<>
-		{cv.experiences.map((item, index) => (
-			<View key={index} style={shared.item} wrap={false}>
-				<Text style={shared.itemTitle}>
-					{item.role} — {item.company}
-				</Text>
-				<Text style={shared.itemMeta}>{[item.date, item.place].filter(Boolean).join(" · ")}</Text>
-				<Text>{item.description}</Text>
-			</View>
-		))}
-	</>
-);
-
-const EducationBlock = ({ cv }: { cv: CV }) => (
-	<>
-		{cv.education.map((item, index) => (
-			<View key={index} style={shared.item} wrap={false}>
-				<Text style={shared.itemTitle}>{item.degree}</Text>
-				<Text style={shared.itemMeta}>{[item.school, item.date, item.place].filter(Boolean).join(" · ")}</Text>
-			</View>
-		))}
-	</>
-);
-
-function ClassicPdf({ cv }: { cv: CV }) {
-	return (
-		<Document title={cv.name || "CV"}>
-			<Page size="A4" style={classicStyles.page}>
-				<View style={classicStyles.header}>
-					{cv.photo && <Image src={cv.photo} style={classicStyles.photo} />}
-					<View>
-						<Text style={[shared.name, { color: cv.accent }]}>{cv.name}</Text>
-						<Text style={shared.role}>{cv.title}</Text>
-						<View style={classicStyles.contactRow}>
-							{cv.showIcons ? (
-								contactItems(cv).map((item) => (
-									<View key={item.key} style={classicStyles.contactChip}>
-										<ContactIcon name={item.key} color={cv.iconColor || "#7b8794"} size={8.5} />
-										<Text style={classicStyles.contactText}>{item.value}</Text>
-									</View>
-								))
-							) : (
-								<Text style={classicStyles.contactText}>
-									{contactItems(cv)
-										.map((item) => item.value)
-										.join("  ·  ")}
-								</Text>
-							)}
+const SectionContent = ({ id, cv, col }: { id: SectionId; cv: CV; col: Column }) => {
+	const s = col.styles;
+	switch (id) {
+		case "profile":
+			return <Text style={s.profile}>{cv.profile}</Text>;
+		case "experiences":
+			return (
+				<>
+					{cv.experiences.map((item, index) => (
+						<View key={index} style={s.item} wrap={false}>
+							<Text style={s.itemTitle}>
+								{item.role} — {item.company}
+							</Text>
+							<Text style={s.itemMeta}>{[item.date, item.place].filter(Boolean).join(" · ")}</Text>
+							{item.description ? <Text style={s.itemText}>{item.description}</Text> : null}
 						</View>
-					</View>
+					))}
+				</>
+			);
+		case "education":
+			return (
+				<>
+					{cv.education.map((item, index) => (
+						<View key={index} style={s.item} wrap={false}>
+							<Text style={s.itemTitle}>{item.degree}</Text>
+							<Text style={s.itemMeta}>{[item.school, item.date, item.place].filter(Boolean).join(" · ")}</Text>
+						</View>
+					))}
+				</>
+			);
+		case "skills":
+			return (
+				<View style={s.tagRow}>
+					{lines(cv.skills).map((skill) => (
+						<View key={skill} style={s.tag}>
+							<Text style={s.tagText}>{skill}</Text>
+						</View>
+					))}
 				</View>
-
-				<MainTitle accent={cv.accent}>Profil</MainTitle>
-				<Text style={shared.profile}>{cv.profile}</Text>
-
-				<MainTitle accent={cv.accent}>Expériences</MainTitle>
-				<ExperienceBlock cv={cv} />
-
-				<KeepTogether>
-					<MainTitle accent={cv.accent}>Compétences</MainTitle>
-					<View style={shared.tagRow}>
-						{lines(cv.skills).map((skill) => (
-							<View key={skill} style={classicStyles.tag}>
-								<Text style={classicStyles.tagText}>{skill}</Text>
-							</View>
-						))}
-					</View>
-				</KeepTogether>
-
-				<KeepTogether>
-					<MainTitle accent={cv.accent}>Formation</MainTitle>
-					<EducationBlock cv={cv} />
-				</KeepTogether>
-
-				<KeepTogether>
-					<MainTitle accent={cv.accent}>Langues</MainTitle>
-					{lines(cv.languages).map((line) => {
+			);
+		case "languages":
+			return col.cfg.side
+				? lines(cv.languages).map((line) => {
 						const lang = parseLanguage(line);
 						return (
-							<View key={line} style={classicStyles.lang} wrap={false}>
-								<Text style={shared.itemTitle}>{lang.name}</Text>
-								<View style={classicStyles.langRight}>
-									{lang.level ? <Text style={shared.itemMeta}>{lang.level}</Text> : null}
-									{lang.dots > 0 && <Dots count={lang.dots} filled={cv.accent} empty="#dde3ea" />}
+							<View key={line} style={s.langBlock} wrap={false}>
+								<Text style={s.langName}>{lang.name}</Text>
+								{lang.level ? <Text style={s.langLevel}>{lang.level}</Text> : null}
+								{lang.dots > 0 && <Dots count={lang.dots} filled={col.cfg.dotFilled} empty={col.cfg.dotEmpty} />}
+							</View>
+						);
+					})
+				: lines(cv.languages).map((line) => {
+						const lang = parseLanguage(line);
+						return (
+							<View key={line} style={s.langRow} wrap={false}>
+								<Text style={s.itemTitle}>{lang.name}</Text>
+								<View style={{ alignItems: "flex-end" }}>
+									{lang.level ? <Text style={s.itemMeta}>{lang.level}</Text> : null}
+									{lang.dots > 0 && <Dots count={lang.dots} filled={col.cfg.dotFilled} empty={col.cfg.dotEmpty} />}
 								</View>
 							</View>
 						);
-					})}
-				</KeepTogether>
+					});
+		case "interests":
+			return col.cfg.side ? (
+				lines(cv.interests).map((interest) => (
+					<Text key={interest} style={s.interest}>
+						• {interest}
+					</Text>
+				))
+			) : (
+				<Text style={s.interest}>{lines(cv.interests).join("   ·   ")}</Text>
+			);
+	}
+};
 
-				{lines(cv.interests).length > 0 && (
-					<KeepTogether>
-						<MainTitle accent={cv.accent}>Intérêts</MainTitle>
-						<Text>{lines(cv.interests).join(" · ")}</Text>
-					</KeepTogether>
-				)}
-			</Page>
-		</Document>
+/** A section = its title + body, optionally kept whole on one page (`wrap={false}`). */
+const SectionBlock = ({ id, cv, col, keepTogether }: { id: SectionId; cv: CV; col: Column; keepTogether: boolean }) => (
+	<View wrap={keepTogether ? false : undefined}>
+		<SectionTitle label={SECTION_LABELS[id]} col={col} />
+		<SectionContent id={id} cv={cv} col={col} />
+	</View>
+);
+
+const Sections = ({ ids, cv, col }: { ids: SectionId[]; cv: CV; col: Column }) => (
+	<>
+		{ids.map((id) => (
+			<SectionBlock key={id} id={id} cv={cv} col={col} keepTogether={cv.sectionOptions?.[id]?.keepTogether ?? false} />
+		))}
+	</>
+);
+
+// ---------------------------------------------------------------------------
+// Header pieces
+// ---------------------------------------------------------------------------
+
+const ContactList = ({
+	cv,
+	color,
+	iconColor,
+	dividerColor,
+}: {
+	cv: CV;
+	color: string;
+	iconColor: string;
+	dividerColor?: string;
+}) => (
+	<View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", marginTop: 5 }}>
+		{contactItems(cv).map((item, index) => (
+			<View key={item.key} style={{ flexDirection: "row", alignItems: "center", marginRight: 10, marginBottom: 3 }}>
+				{dividerColor && index > 0 ? (
+					<Text style={{ color: dividerColor, fontSize: 9, marginRight: 10 }}>|</Text>
+				) : null}
+				{cv.showIcons && <ContactIcon name={item.key} color={iconColor} size={8.5} />}
+				<Text style={{ fontSize: 9.5, color, marginLeft: cv.showIcons ? 4 : 0, lineHeight: 1 }}>{item.value}</Text>
+			</View>
+		))}
+	</View>
+);
+
+// ---------------------------------------------------------------------------
+// Template definition
+// ---------------------------------------------------------------------------
+
+type Template = {
+	structure: "single" | "sidebar" | "banded";
+	page: Style;
+	main: Column;
+	side: Column;
+	/** header rendered in the main content area (page 1). */
+	Header: () => ReactNode;
+	/** pinned photo + contacts at the top of the accent sidebar (sidebar structure). */
+	SideHeader?: () => ReactNode;
+	/** full-width banner across the top (banded structure). */
+	Banner?: () => ReactNode;
+	sideBg?: string; // sidebar structure: accent column background
+	sideOnLeft?: boolean; // banded structure: which side the narrow column sits
+};
+
+const resolveTemplate = (cv: CV): Template => {
+	const accent = cv.accent || "#123047";
+	const lightMain = makeColumn({
+		side: false,
+		text: "#27364a",
+		muted: "#7b8794",
+		title: accent,
+		rule: accent,
+		heading: "#1f2933",
+		tagBg: "#eef2f6",
+		tagText: "#3e4c59",
+		dotFilled: accent,
+		dotEmpty: "#dde3ea",
+		langBorder: "#f0f2f5",
+	});
+	const accentSide = makeColumn({
+		side: true,
+		text: "rgba(255,255,255,0.88)",
+		muted: "rgba(255,255,255,0.7)",
+		title: "#ffffff",
+		rule: "rgba(255,255,255,0.55)",
+		heading: "#ffffff",
+		tagBg: "rgba(255,255,255,0.16)",
+		tagText: "#ffffff",
+		dotFilled: "#ffffff",
+		dotEmpty: "rgba(255,255,255,0.28)",
+		langBorder: "rgba(255,255,255,0.2)",
+	});
+	const tintSide = makeColumn({
+		side: true,
+		text: "#27364a",
+		muted: "#7b8794",
+		title: accent,
+		rule: accent,
+		heading: "#1f2933",
+		tagBg: tint(accent, 0.16),
+		tagText: accent,
+		dotFilled: accent,
+		dotEmpty: "#dde3ea",
+		langBorder: "#eceff3",
+	});
+
+	const nameBlock = (color: string, size = 24) => (
+		<>
+			<Text style={[shared.name, { color, fontSize: size }]}>{cv.name}</Text>
+			<Text style={[shared.role, { color: color === "#ffffff" ? "rgba(255,255,255,0.85)" : "#52606d" }]}>
+				{cv.title}
+			</Text>
+		</>
 	);
-}
 
-function SidebarPdf({ cv }: { cv: CV }) {
-	return (
-		<Document title={cv.name || "CV"}>
-			<Page size="A4" style={sidebarStyles.page}>
-				{/* Fixed full-height patterned background — repeats cleanly on overflow pages. */}
-				<View fixed style={[sidebarStyles.bg, { backgroundColor: cv.accent }]}>
-					<Svg width={SIDE_WIDTH} height={A4_HEIGHT} style={{ position: "absolute", top: 0, left: 0 }}>
-						{patternDots()}
-					</Svg>
-				</View>
-
-				<View style={sidebarStyles.side}>
-					{cv.photo && (
-						<View style={sidebarStyles.photoWrap}>
-							<Image src={cv.photo} style={sidebarStyles.photo} />
-						</View>
-					)}
-
-					<SideTitle>Coordonnées</SideTitle>
-					{contactItems(cv).map((item) => (
-						<View key={item.key} style={sidebarStyles.contactRow}>
-							{cv.showIcons && <ContactIcon name={item.key} color={cv.iconColor || "#e6edf5"} />}
-							<Text style={sidebarStyles.contactText}>{item.value}</Text>
-						</View>
-					))}
-
-					<SideTitle>Compétences</SideTitle>
-					<View style={shared.tagRow}>
-						{lines(cv.skills).map((skill) => (
-							<View key={skill} style={sidebarStyles.sideTag}>
-								<Text style={sidebarStyles.sideTagText}>{skill}</Text>
+	switch (cv.template) {
+		case "sidebar":
+			return {
+				structure: "sidebar",
+				page: { flexDirection: "row", fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				main: lightMain,
+				side: accentSide,
+				sideBg: accent,
+				Header: () => <View style={{ marginBottom: 2 }}>{nameBlock(accent)}</View>,
+				SideHeader: () => (
+					<>
+						{cv.photo && (
+							<View
+								style={{
+									width: 132,
+									height: 132,
+									borderRadius: 66,
+									alignSelf: "center",
+									marginBottom: 18,
+									padding: 3,
+									backgroundColor: "rgba(255,255,255,0.16)",
+								}}
+							>
+								<Image src={cv.photo} style={{ width: "100%", height: "100%", borderRadius: 63, objectFit: "cover" }} />
+							</View>
+						)}
+						<SectionTitle label="Coordonnées" col={accentSide} />
+						{contactItems(cv).map((item) => (
+							<View key={item.key} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5 }}>
+								{cv.showIcons && <ContactIcon name={item.key} color={cv.iconColor || "#e6edf5"} />}
+								<Text
+									style={{
+										fontSize: 9.5,
+										lineHeight: 1,
+										color: "rgba(255,255,255,0.88)",
+										marginLeft: cv.showIcons ? 6 : 0,
+										flex: 1,
+									}}
+								>
+									{item.value}
+								</Text>
 							</View>
 						))}
+					</>
+				),
+			};
+
+		case "pikachu":
+			return {
+				structure: "banded",
+				page: { fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				main: lightMain,
+				side: tintSide,
+				sideOnLeft: true,
+				Header: () => null,
+				Banner: () => (
+					<View
+						style={{
+							backgroundColor: accent,
+							paddingHorizontal: 34,
+							paddingVertical: 22,
+							flexDirection: "row",
+							alignItems: "center",
+							gap: 16,
+						}}
+					>
+						{cv.photo && (
+							<Image
+								src={cv.photo}
+								style={{
+									width: 74,
+									height: 74,
+									borderRadius: 37,
+									objectFit: "cover",
+									borderWidth: 2,
+									borderColor: "rgba(255,255,255,0.4)",
+								}}
+							/>
+						)}
+						<View>
+							{nameBlock("#ffffff")}
+							<ContactList cv={cv} color="rgba(255,255,255,0.92)" iconColor="#ffffff" />
+						</View>
 					</View>
+				),
+			};
 
-					<SideTitle>Langues</SideTitle>
-					{lines(cv.languages).map((line) => {
-						const lang = parseLanguage(line);
-						return (
-							<View key={line} style={{ marginBottom: 12 }} wrap={false}>
-								<Text style={sidebarStyles.sideLangName}>{lang.name}</Text>
-								{lang.level ? <Text style={sidebarStyles.langLevel}>{lang.level}</Text> : null}
-								{lang.dots > 0 && <Dots count={lang.dots} filled="#ffffff" empty="rgba(255,255,255,0.28)" />}
-							</View>
-						);
-					})}
+		case "leafish":
+			return {
+				structure: "banded",
+				page: { fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				main: lightMain,
+				side: tintSide,
+				sideOnLeft: false,
+				Header: () => null,
+				Banner: () => (
+					<View>
+						<View
+							style={{
+								backgroundColor: tint(accent, 0.12),
+								paddingHorizontal: 34,
+								paddingVertical: 20,
+								flexDirection: "row",
+								alignItems: "center",
+								gap: 16,
+							}}
+						>
+							{cv.photo && (
+								<Image src={cv.photo} style={{ width: 70, height: 70, borderRadius: 35, objectFit: "cover" }} />
+							)}
+							<View>{nameBlock(accent)}</View>
+						</View>
+						<View style={{ backgroundColor: tint(accent, 0.22), paddingHorizontal: 34, paddingVertical: 9 }}>
+							<ContactList cv={cv} color="#334155" iconColor={cv.iconColor || accent} />
+						</View>
+					</View>
+				),
+			};
 
-					<SideTitle>Intérêts</SideTitle>
-					{lines(cv.interests).map((interest) => (
-						<Text key={interest} style={sidebarStyles.sideText}>
-							<Text style={sidebarStyles.dot}>• </Text>
-							{interest}
-						</Text>
-					))}
-				</View>
+		case "rhyhorn":
+			return {
+				structure: "single",
+				page: { paddingHorizontal: 42, paddingVertical: 34, fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				main: lightMain,
+				side: lightMain,
+				Header: () => (
+					<View
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							justifyContent: "space-between",
+							borderBottomWidth: 1.5,
+							borderBottomColor: accent,
+							paddingBottom: 12,
+							marginBottom: 4,
+						}}
+					>
+						<View style={{ flex: 1 }}>
+							{nameBlock(accent, 25)}
+							<ContactList
+								cv={cv}
+								color="#52606d"
+								iconColor={cv.iconColor || accent}
+								dividerColor={tint(accent, 0.55)}
+							/>
+						</View>
+						{cv.photo && (
+							<Image
+								src={cv.photo}
+								style={{ width: 78, height: 78, borderRadius: 39, objectFit: "cover", marginLeft: 16 }}
+							/>
+						)}
+					</View>
+				),
+			};
 
-				<View style={sidebarStyles.main}>
-					<Text style={[shared.name, { color: cv.accent }]}>{cv.name}</Text>
-					<Text style={shared.role}>{cv.title}</Text>
+		case "minimal":
+			return {
+				structure: "single",
+				page: { paddingHorizontal: 54, paddingVertical: 48, fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				main: makeColumn({
+					side: false,
+					text: "#27364a",
+					muted: "#8894a3",
+					title: "#1f2933",
+					heading: "#1f2933",
+					tagBg: "#f1f3f6",
+					tagText: "#3e4c59",
+					dotFilled: accent,
+					dotEmpty: "#e2e6ec",
+					langBorder: "#f0f2f5",
+				}),
+				side: lightMain,
+				Header: () => (
+					<View style={{ marginBottom: 6 }}>
+						<Text style={[shared.name, { color: "#101820", fontSize: 30 }]}>{cv.name}</Text>
+						<Text style={[shared.role, { color: accent, fontSize: 13 }]}>{cv.title}</Text>
+						<ContactList cv={cv} color="#667085" iconColor={cv.iconColor || "#98a2b3"} />
+					</View>
+				),
+			};
 
-					<MainTitle accent={cv.accent}>Profil</MainTitle>
-					<Text style={shared.profile}>{cv.profile}</Text>
+		default: // classic
+			return {
+				structure: "single",
+				page: { paddingHorizontal: 40, paddingVertical: 32, fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				main: lightMain,
+				side: lightMain,
+				Header: () => (
+					<View
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							gap: 18,
+							borderBottomWidth: 1,
+							borderBottomColor: "#e4e7eb",
+							paddingBottom: 12,
+							marginBottom: 3,
+						}}
+					>
+						{cv.photo && (
+							<Image src={cv.photo} style={{ width: 92, height: 92, borderRadius: 46, objectFit: "cover" }} />
+						)}
+						<View style={{ flex: 1 }}>
+							{nameBlock(accent, 26)}
+							<ContactList cv={cv} color="#7b8794" iconColor={cv.iconColor || "#7b8794"} />
+						</View>
+					</View>
+				),
+			};
+	}
+};
 
-					<MainTitle accent={cv.accent}>Expériences</MainTitle>
-					<ExperienceBlock cv={cv} />
+// ---------------------------------------------------------------------------
+// Page renderers (one per structure)
+// ---------------------------------------------------------------------------
 
-					<KeepTogether>
-						<MainTitle accent={cv.accent}>Formation</MainTitle>
-						<EducationBlock cv={cv} />
-					</KeepTogether>
-				</View>
-			</Page>
-		</Document>
+const SinglePage = ({ cv, t, page, first }: { cv: CV; t: Template; page: PageLayout; first: boolean }) => (
+	<Page size="A4" style={t.page}>
+		{first && t.Header()}
+		<Sections ids={[...page.main, ...page.sidebar]} cv={cv} col={t.main} />
+	</Page>
+);
+
+const SidebarPage = ({
+	cv,
+	t,
+	page,
+	first,
+	sideWidth,
+}: {
+	cv: CV;
+	t: Template;
+	page: PageLayout;
+	first: boolean;
+	sideWidth: number;
+}) => (
+	<Page size="A4" style={t.page}>
+		<View
+			fixed
+			style={{ position: "absolute", top: 0, left: 0, width: sideWidth, height: "100%", backgroundColor: t.sideBg }}
+		>
+			<Svg width={sideWidth} height={A4_HEIGHT} style={{ position: "absolute", top: 0, left: 0 }}>
+				{patternDots(sideWidth)}
+			</Svg>
+		</View>
+		<View style={{ width: sideWidth, paddingTop: 30, paddingBottom: 26, paddingHorizontal: 20 }}>
+			{first && t.SideHeader?.()}
+			<Sections ids={page.sidebar} cv={cv} col={t.side} />
+		</View>
+		<View style={{ flex: 1, paddingTop: 34, paddingBottom: 30, paddingHorizontal: 28 }}>
+			{first && t.Header()}
+			<Sections ids={page.main} cv={cv} col={t.main} />
+		</View>
+	</Page>
+);
+
+const BandedPage = ({
+	cv,
+	t,
+	page,
+	first,
+	sideWidth,
+}: {
+	cv: CV;
+	t: Template;
+	page: PageLayout;
+	first: boolean;
+	sideWidth: number;
+}) => {
+	const side = (
+		<View style={{ width: sideWidth }}>
+			<Sections ids={page.sidebar} cv={cv} col={t.side} />
+		</View>
 	);
-}
+	const main = (
+		<View style={{ flex: 1 }}>
+			<Sections ids={page.main} cv={cv} col={t.main} />
+		</View>
+	);
+	return (
+		<Page size="A4" style={t.page}>
+			{first && t.Banner?.()}
+			<View style={{ flexDirection: "row", gap: 22, paddingHorizontal: 34, paddingTop: 18, paddingBottom: 24 }}>
+				{t.sideOnLeft ? (
+					<>
+						{side}
+						{main}
+					</>
+				) : (
+					<>
+						{main}
+						{side}
+					</>
+				)}
+			</View>
+		</Page>
+	);
+};
 
 export function CVPdf({ cv }: { cv: CV }) {
-	return cv.template === "sidebar" ? <SidebarPdf cv={cv} /> : <ClassicPdf cv={cv} />;
+	const t = resolveTemplate(cv);
+	const layout = normalizeLayout(cv.layout);
+	const sideWidth = Math.round((A4_WIDTH * layout.sidebarWidth) / 100);
+	return (
+		<Document title={cv.name || "CV"}>
+			{layout.pages.map((page, index) => {
+				const first = index === 0;
+				if (t.structure === "sidebar")
+					return <SidebarPage key={index} cv={cv} t={t} page={page} first={first} sideWidth={sideWidth} />;
+				if (t.structure === "banded")
+					return <BandedPage key={index} cv={cv} t={t} page={page} first={first} sideWidth={sideWidth} />;
+				return <SinglePage key={index} cv={cv} t={t} page={page} first={first} />;
+			})}
+		</Document>
+	);
 }

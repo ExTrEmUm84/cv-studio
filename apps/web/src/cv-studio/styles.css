@@ -660,3 +660,115 @@
 	background: #79d4ff;
 	color: #071d2a;
 }
+
+/* ---- Layout (pages & columns) editor ---- */
+.cv-hint {
+	color: #9db2c6;
+	font-size: 12px;
+	line-height: 1.45;
+	margin: 0 0 12px;
+}
+.cv-layout-page {
+	background: rgba(0, 0, 0, 0.16);
+	border-radius: 16px;
+	padding: 12px;
+	margin-bottom: 12px;
+}
+.cv-layout-pagehead {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.04em;
+	color: #c5d5e4;
+	text-transform: uppercase;
+	margin-bottom: 8px;
+}
+.cv-layout-cols {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 10px;
+}
+.cv-layout-cols.two {
+	grid-template-columns: 1fr 1fr;
+}
+.cv-layout-collabel {
+	display: block;
+	font-size: 11px;
+	color: #8ba0b4;
+	margin-bottom: 5px;
+}
+.cv-layout-col {
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
+	min-height: 46px;
+	padding: 8px;
+	border: 1px dashed rgba(255, 255, 255, 0.14);
+	border-radius: 12px;
+	transition:
+		border-color 0.15s,
+		background 0.15s;
+}
+.cv-layout-col.over {
+	border-color: #79d4ff;
+	background: rgba(121, 212, 255, 0.08);
+}
+.cv-layout-empty {
+	color: #6b7f92;
+	font-size: 11.5px;
+	text-align: center;
+	margin: 6px 0;
+}
+.cv-layout-chip {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 7px 9px;
+	border-radius: 10px;
+	background: #223141;
+	border: 1px solid rgba(255, 255, 255, 0.07);
+	color: #eaf1f8;
+	font-size: 13px;
+}
+.cv-layout-chip.dragging {
+	box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+}
+.cv-layout-grip {
+	cursor: grab;
+	color: #7f95a9;
+	font-size: 14px;
+	line-height: 1;
+	touch-action: none;
+	user-select: none;
+}
+.cv-layout-grip:active {
+	cursor: grabbing;
+}
+.cv-layout-chip-label {
+	flex: 1;
+	font-weight: 600;
+}
+.cv-layout-keep {
+	border: 1px solid rgba(255, 255, 255, 0.16);
+	background: transparent;
+	color: #9db2c6;
+	font-size: 10.5px;
+	font-weight: 700;
+	padding: 3px 8px;
+	border-radius: 999px;
+	cursor: pointer;
+}
+.cv-layout-keep.on {
+	background: #79d4ff;
+	border-color: #79d4ff;
+	color: #071d2a;
+}
+.cv-layout-width {
+	margin-top: 4px;
+}
+.cv-layout-width input[type="range"] {
+	width: 100%;
+	accent-color: #79d4ff;
+}

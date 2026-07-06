@@ -1,9 +1,30 @@
+import type { DragEndEvent, DragOverEvent, DragStartEvent, UniqueIdentifier } from "@dnd-kit/core";
 import type { PreviewPageSize } from "../features/resume/preview/preview.shared.utils";
-import type { CV, Education, Experience } from "./cv-data";
+import type { CV, Education, Experience, PageLayout, SectionId, TemplateKey } from "./cv-data";
+import {
+	closestCorners,
+	DndContext,
+	DragOverlay,
+	PointerSensor,
+	useDroppable,
+	useSensor,
+	useSensors,
+} from "@dnd-kit/core";
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { PDFDownloadLink, pdf } from "@react-pdf/renderer";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PdfCanvasDocument, PdfCanvasPage } from "../features/resume/preview/pdf-canvas";
-import { PALETTE, sample, storageKey } from "./cv-data";
+import {
+	hydrateCv,
+	normalizeLayout,
+	PALETTE,
+	SECTION_LABELS,
+	sample,
+	storageKey,
+	TEMPLATES,
+	TWO_COLUMN_TEMPLATES,
+} from "./cv-data";
 import { CVPdf } from "./pdf";
 import "./styles.css";
 
@@ -98,8 +119,262 @@ function EducationEditor({
 	);
 }
 
+// ---------------------------------------------------------------------------
+// Drag-and-drop page/column layout editor (assign sections to pages & columns)
+// ---------------------------------------------------------------------------
+
+type Containers = Record<string, SectionId[]>;
+const columnKey = (page: number, col: "main" | "sidebar") => `${page}|${col}`;
+const isColumnKey = (id: UniqueIdentifier): id is string => typeof id === "string" && id.includes("|");
+// dnd-kit ids are string | number; ours are always section-id strings.
+const asSectionId = (id: UniqueIdentifier): SectionId => id as string as SectionId;
+const toContainers = (pages: PageLayout[]): Containers => {
+	const map: Containers = {};
+	pages.forEach((page, index) => {
+		map[columnKey(index, "main")] = [...page.main];
+		map[columnKey(index, "sidebar")] = [...page.sidebar];
+	});
+	return map;
+};
+const fromContainers = (containers: Containers, pageCount: number): PageLayout[] =>
+	Array.from({ length: pageCount }, (_, index) => ({
+		main: containers[columnKey(index, "main")] ?? [],
+		sidebar: containers[columnKey(index, "sidebar")] ?? [],
+	}));
+
+function SectionChip({
+	id,
+	keepTogether,
+	onToggleKeep,
+}: {
+	id: SectionId;
+	keepTogether: boolean;
+	onToggleKeep: () => void;
+}) {
+	const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+	return (
+		<div
+			ref={setNodeRef}
+			className="cv-layout-chip"
+			style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
+		>
+			<span className="cv-layout-grip" {...attributes} {...listeners} title="Déplacer la section">
+				⠿
+			</span>
+			<span className="cv-layout-chip-label">{SECTION_LABELS[id]}</span>
+			<button
+				type="button"
+				className={keepTogether ? "cv-layout-keep on" : "cv-layout-keep"}
+				onClick={onToggleKeep}
+				title="Garder cette section entière sur une seule page"
+			>
+				grouper
+			</button>
+		</div>
+	);
+}
+
+function LayoutColumn({
+	id,
+	label,
+	items,
+	cv,
+	onToggleKeep,
+}: {
+	id: string;
+	label?: string;
+	items: SectionId[];
+	cv: CV;
+	onToggleKeep: (id: SectionId) => void;
+}) {
+	const { setNodeRef, isOver } = useDroppable({ id });
+	return (
+		<div className="cv-layout-colwrap">
+			{label && <span className="cv-layout-collabel">{label}</span>}
+			<SortableContext id={id} items={items} strategy={verticalListSortingStrategy}>
+				<div ref={setNodeRef} className={isOver ? "cv-layout-col over" : "cv-layout-col"}>
+					{items.length === 0 ? (
+						<p className="cv-layout-empty">Déposez une section ici</p>
+					) : (
+						items.map((sid) => (
+							<SectionChip
+								key={sid}
+								id={sid}
+								keepTogether={cv.sectionOptions[sid]?.keepTogether ?? false}
+								onToggleKeep={() => onToggleKeep(sid)}
+							/>
+						))
+					)}
+				</div>
+			</SortableContext>
+		</div>
+	);
+}
+
+function LayoutEditor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
+	const twoCol = TWO_COLUMN_TEMPLATES.includes(cv.template);
+	const pageCount = cv.layout.pages.length;
+	const [containers, setContainers] = useState<Containers>(() => toContainers(cv.layout.pages));
+	const [activeId, setActiveId] = useState<SectionId | null>(null);
+	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+	// containersRef mirrors state synchronously so drag handlers never read a batched-stale value.
+	const containersRef = useRef(containers);
+	const apply = (next: Containers) => {
+		containersRef.current = next;
+		setContainers(next);
+	};
+
+	// Re-sync when the layout changes outside a drag (add/remove page, template fold, reset, import).
+	useEffect(() => {
+		const next = toContainers(cv.layout.pages);
+		containersRef.current = next;
+		setContainers(next);
+	}, [cv.layout]);
+
+	const findColumn = (id: UniqueIdentifier): string | undefined =>
+		isColumnKey(id)
+			? id
+			: Object.keys(containersRef.current).find((key) => containersRef.current[key].includes(asSectionId(id)));
+
+	const onDragStart = ({ active }: DragStartEvent) => setActiveId(asSectionId(active.id));
+
+	const onDragOver = ({ active, over }: DragOverEvent) => {
+		if (!over) return;
+		const from = findColumn(active.id);
+		const to = findColumn(over.id);
+		if (!from || !to || from === to) return;
+		const prev = containersRef.current;
+		const fromItems = prev[from];
+		const toItems = prev[to];
+		const overIndex = isColumnKey(over.id) ? toItems.length : toItems.indexOf(asSectionId(over.id));
+		const insertAt = overIndex >= 0 ? overIndex : toItems.length;
+		apply({
+			...prev,
+			[from]: fromItems.filter((sid) => sid !== active.id),
+			[to]: [...toItems.slice(0, insertAt), asSectionId(active.id), ...toItems.slice(insertAt)],
+		});
+	};
+
+	const onDragEnd = ({ active, over }: DragEndEvent) => {
+		setActiveId(null);
+		const prev = containersRef.current;
+		let next = prev;
+		if (over) {
+			const from = findColumn(active.id);
+			const to = findColumn(over.id);
+			if (from && to && from === to && !isColumnKey(over.id)) {
+				const items = prev[from];
+				const oldIndex = items.indexOf(asSectionId(active.id));
+				const newIndex = items.indexOf(asSectionId(over.id));
+				if (oldIndex !== newIndex && newIndex >= 0) next = { ...prev, [from]: arrayMove(items, oldIndex, newIndex) };
+			}
+		}
+		apply(next);
+		setCv({ ...cv, layout: normalizeLayout({ ...cv.layout, pages: fromContainers(next, pageCount) }) });
+	};
+
+	const toggleKeep = (id: SectionId) =>
+		setCv({
+			...cv,
+			sectionOptions: { ...cv.sectionOptions, [id]: { keepTogether: !(cv.sectionOptions[id]?.keepTogether ?? false) } },
+		});
+
+	const addPage = () =>
+		setCv({ ...cv, layout: { ...cv.layout, pages: [...cv.layout.pages, { main: [], sidebar: [] }] } });
+
+	const removePage = (index: number) => {
+		const pages = cv.layout.pages.filter((_, i) => i !== index);
+		// normalizeLayout re-homes the removed page's sections onto the last remaining page's main column.
+		setCv({
+			...cv,
+			layout: normalizeLayout({ ...cv.layout, pages: pages.length ? pages : [{ main: [], sidebar: [] }] }),
+		});
+	};
+
+	return (
+		<section className="cv-panel">
+			<h2>Mise en page</h2>
+			<p className="cv-hint">
+				Glisse les sections entre les colonnes et les pages. « grouper » empêche une section d'être coupée en deux.
+			</p>
+			<DndContext
+				sensors={sensors}
+				collisionDetection={closestCorners}
+				onDragStart={onDragStart}
+				onDragOver={onDragOver}
+				onDragEnd={onDragEnd}
+			>
+				{cv.layout.pages.map((_, index) => (
+					<div className="cv-layout-page" key={index}>
+						<div className="cv-layout-pagehead">
+							<span>Page {index + 1}</span>
+							{pageCount > 1 && (
+								<button type="button" className="cv-link-button" onClick={() => removePage(index)}>
+									Supprimer
+								</button>
+							)}
+						</div>
+						<div className={twoCol ? "cv-layout-cols two" : "cv-layout-cols"}>
+							<LayoutColumn
+								id={columnKey(index, "main")}
+								label={twoCol ? "Principale" : undefined}
+								items={containers[columnKey(index, "main")] ?? []}
+								cv={cv}
+								onToggleKeep={toggleKeep}
+							/>
+							{twoCol && (
+								<LayoutColumn
+									id={columnKey(index, "sidebar")}
+									label="Latérale"
+									items={containers[columnKey(index, "sidebar")] ?? []}
+									cv={cv}
+									onToggleKeep={toggleKeep}
+								/>
+							)}
+						</div>
+					</div>
+				))}
+				<DragOverlay>
+					{activeId ? (
+						<div className="cv-layout-chip dragging">
+							<span className="cv-layout-grip">⠿</span>
+							<span className="cv-layout-chip-label">{SECTION_LABELS[activeId]}</span>
+						</div>
+					) : null}
+				</DragOverlay>
+			</DndContext>
+			<button type="button" className="cv-add-button" onClick={addPage}>
+				+ Ajouter une page
+			</button>
+			{twoCol && (
+				<label className="cv-field cv-layout-width">
+					<span>Largeur colonne latérale : {cv.layout.sidebarWidth}%</span>
+					<input
+						type="range"
+						min={20}
+						max={45}
+						value={cv.layout.sidebarWidth}
+						onChange={(event) => setCv({ ...cv, layout: { ...cv.layout, sidebarWidth: Number(event.target.value) } })}
+					/>
+				</label>
+			)}
+		</section>
+	);
+}
+
 function Editor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 	const set = <K extends keyof CV>(key: K, value: CV[K]) => setCv({ ...cv, [key]: value });
+	// Switching to a single-column template folds any sidebar sections back into the main column
+	// so nothing disappears from the page.
+	const setTemplate = (template: TemplateKey) => {
+		const layout = TWO_COLUMN_TEMPLATES.includes(template)
+			? cv.layout
+			: normalizeLayout({
+					...cv.layout,
+					pages: cv.layout.pages.map((page) => ({ main: [...page.main, ...page.sidebar], sidebar: [] })),
+				});
+		setCv({ ...cv, template, layout });
+	};
 	const onPhoto = (file?: File) => {
 		if (!file) return;
 		const reader = new FileReader();
@@ -122,10 +397,12 @@ function Editor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 				<h2>Design</h2>
 				<label className="cv-field">
 					<span>Modèle</span>
-					<select value={cv.template} onChange={(event) => set("template", event.target.value as CV["template"])}>
-						<option value="classic">Classique premium</option>
-						<option value="sidebar">Colonne latérale moderne</option>
-						<option value="minimal">Minimaliste</option>
+					<select value={cv.template} onChange={(event) => setTemplate(event.target.value as TemplateKey)}>
+						{TEMPLATES.map((template) => (
+							<option key={template.key} value={template.key}>
+								{template.label}
+							</option>
+						))}
 					</select>
 				</label>
 				<label className="cv-field">
@@ -159,6 +436,7 @@ function Editor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 					</label>
 				)}
 			</section>
+			<LayoutEditor cv={cv} setCv={setCv} />
 			<section className="cv-panel">
 				<h2>Photo</h2>
 				{cv.photo && <img className="cv-editor-photo" src={cv.photo} alt="Portrait" />}
@@ -402,7 +680,7 @@ function CVStudioMain() {
 	const [cv, setCv] = useState<CV>(() => {
 		try {
 			const stored = localStorage.getItem(storageKey);
-			return stored ? { ...sample, ...JSON.parse(stored) } : sample;
+			return hydrateCv(stored ? { ...sample, ...JSON.parse(stored) } : sample);
 		} catch {
 			return sample;
 		}
@@ -426,7 +704,7 @@ function CVStudioMain() {
 		const reader = new FileReader();
 		reader.onload = () => {
 			try {
-				setCv({ ...sample, ...JSON.parse(String(reader.result)) });
+				setCv(hydrateCv({ ...sample, ...JSON.parse(String(reader.result)) }));
 			} catch {
 				window.alert("Fichier invalide : ce n'est pas un export CV Studio valide.");
 			}

@@ -1,5 +1,45 @@
 export type Experience = { role: string; company: string; date: string; place: string; description: string };
 export type Education = { degree: string; school: string; date: string; place: string };
+
+/** Available page designs. Order here drives the template picker. */
+export type TemplateKey = "classic" | "minimal" | "sidebar" | "pikachu" | "leafish" | "rhyhorn";
+
+export const TEMPLATES: { key: TemplateKey; label: string }[] = [
+	{ key: "classic", label: "Classique premium" },
+	{ key: "minimal", label: "Minimaliste" },
+	{ key: "sidebar", label: "Colonne latérale" },
+	{ key: "pikachu", label: "Bandeau coloré" },
+	{ key: "leafish", label: "Bandeaux teintés" },
+	{ key: "rhyhorn", label: "Filet & photo à droite" },
+];
+
+/** Templates that use the two-column (accent sidebar / banded) layout. */
+export const TWO_COLUMN_TEMPLATES: TemplateKey[] = ["sidebar", "pikachu", "leafish"];
+
+/** The draggable content blocks. The header (name/photo/contacts) is fixed and not a section. */
+export type SectionId = "profile" | "experiences" | "education" | "skills" | "languages" | "interests";
+
+/** All sections in their canonical order — used to seed a layout and to fill in any missing ids. */
+export const SECTION_ORDER: SectionId[] = ["profile", "experiences", "education", "skills", "languages", "interests"];
+
+export const SECTION_LABELS: Record<SectionId, string> = {
+	profile: "Profil",
+	experiences: "Expériences",
+	education: "Formation",
+	skills: "Compétences",
+	languages: "Langues",
+	interests: "Intérêts",
+};
+
+/** One physical page: sections assigned to the main column and (sidebar template only) the side column. */
+export type PageLayout = { main: SectionId[]; sidebar: SectionId[] };
+
+/** Explicit multi-page layout — the user decides which section lands on which page/column. */
+export type Layout = { sidebarWidth: number; pages: PageLayout[] };
+
+/** Per-section page-break constraint (mapped to react-pdf `wrap={false}` at render time). */
+export type SectionOptions = { keepTogether: boolean };
+
 export type CV = {
 	name: string;
 	title: string;
@@ -16,10 +56,62 @@ export type CV = {
 	experiences: Experience[];
 	education: Education[];
 	accent: string;
-	template: "classic" | "sidebar" | "minimal";
+	template: TemplateKey;
 	showIcons: boolean;
 	iconColor: string;
+	layout: Layout;
+	sectionOptions: Record<SectionId, SectionOptions>;
 };
+
+/**
+ * Default per-section options. Short list-like sections stay whole (as the classic PDF always did);
+ * the long, flowing ones (profil, expériences) may span pages — individual entries never split.
+ */
+export const defaultSectionOptions = (): Record<SectionId, SectionOptions> =>
+	Object.fromEntries(
+		SECTION_ORDER.map((id) => [id, { keepTogether: id !== "profile" && id !== "experiences" }]),
+	) as Record<SectionId, SectionOptions>;
+
+/** Every section present, split into main/sidebar the way the classic sidebar template does. */
+export const defaultLayout = (): Layout => ({
+	sidebarWidth: 34,
+	pages: [{ main: ["profile", "experiences", "education"], sidebar: ["skills", "languages", "interests"] }],
+});
+
+/** All section ids currently placed anywhere in the layout (main + sidebar across every page). */
+export const placedSections = (layout: Layout): SectionId[] =>
+	layout.pages.flatMap((page) => [...page.main, ...page.sidebar]);
+
+/**
+ * Repair a (possibly missing/partial) layout so it always contains exactly the canonical section
+ * set: drop unknown/duplicate ids and append any missing ones to the last page's main column.
+ * Guarantees at least one page. Safe to call on legacy data that predates the layout field.
+ */
+export const normalizeLayout = (layout: Layout | undefined): Layout => {
+	const base = layout ?? defaultLayout();
+	const seen = new Set<SectionId>();
+	const keep = (ids: SectionId[] = []) =>
+		ids.filter((id) => {
+			if (!SECTION_ORDER.includes(id) || seen.has(id)) return false;
+			seen.add(id);
+			return true;
+		});
+	const pages = (base.pages?.length ? base.pages : [{ main: [], sidebar: [] }]).map((page) => ({
+		main: keep(page.main),
+		sidebar: keep(page.sidebar),
+	}));
+	const missing = SECTION_ORDER.filter((id) => !seen.has(id));
+	if (missing.length > 0) pages[pages.length - 1].main.push(...missing);
+	const width = Number.isFinite(base.sidebarWidth) ? base.sidebarWidth : 34;
+	return { sidebarWidth: Math.max(10, Math.min(50, Math.round(width))), pages };
+};
+
+/** Fill in the layout + per-section options for any CV (including legacy data missing these fields). */
+export const hydrateCv = (cv: CV): CV => ({
+	...cv,
+	layout: normalizeLayout(cv.layout),
+	sectionOptions: { ...defaultSectionOptions(), ...cv.sectionOptions },
+});
 
 export const storageKey = "cv-studio-standalone-v2";
 
@@ -64,6 +156,8 @@ export const sample: CV = {
 	template: "sidebar",
 	showIcons: true,
 	iconColor: "",
+	layout: defaultLayout(),
+	sectionOptions: defaultSectionOptions(),
 };
 
 export const lines = (value: string) =>
