@@ -589,7 +589,6 @@ function PasswordGate({ children }: { children: React.ReactNode }) {
 				<div className="cv-gate-mark">
 					<EgyptFlag />
 				</div>
-				<h1>Nourhaine Studio</h1>
 				<p>Espace protégé — entre le mot de passe pour continuer.</p>
 				<input
 					type="password"
