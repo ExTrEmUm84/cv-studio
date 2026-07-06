@@ -159,14 +159,14 @@ const sidebarStyles = StyleSheet.create({
 
 /** Section title with a short accent underline (modern, softer than a full rule). */
 const MainTitle = ({ children, accent }: { children: string; accent: string }) => (
-	<View style={{ marginTop: 12, marginBottom: 6 }}>
+	<View style={{ marginTop: 12, marginBottom: 6 }} minPresenceAhead={46}>
 		<Text style={{ fontSize: 9.5, letterSpacing: 1.3, color: accent, fontWeight: 700 }}>{children.toUpperCase()}</Text>
 		<View style={{ width: 26, height: 2, backgroundColor: accent, borderRadius: 1, marginTop: 4 }} />
 	</View>
 );
 
 const SideTitle = ({ children }: { children: string }) => (
-	<View style={{ marginTop: 18, marginBottom: 8 }}>
+	<View style={{ marginTop: 18, marginBottom: 8 }} minPresenceAhead={46}>
 		<Text style={{ fontSize: 9, letterSpacing: 1.4, color: "#ffffff", fontWeight: 700 }}>{children.toUpperCase()}</Text>
 		<View style={{ width: 22, height: 2, backgroundColor: "rgba(255,255,255,0.55)", borderRadius: 1, marginTop: 4 }} />
 	</View>
