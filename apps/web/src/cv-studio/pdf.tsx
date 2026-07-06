@@ -48,13 +48,14 @@ const classicStyles = StyleSheet.create({
 	contact: { fontSize: 9.5, color: "#7b8794", marginTop: 2 },
 	tag: {
 		backgroundColor: "#eef2f6",
-		color: "#3e4c59",
 		borderRadius: 9,
 		paddingHorizontal: 8,
-		paddingVertical: 3.5,
-		fontSize: 9,
+		paddingVertical: 4,
 		marginBottom: 4,
+		alignItems: "center",
+		justifyContent: "center",
 	},
+	tagText: { color: "#3e4c59", fontSize: 9, lineHeight: 1 },
 	lang: {
 		flexDirection: "row",
 		justifyContent: "space-between",
@@ -83,15 +84,16 @@ const sidebarStyles = StyleSheet.create({
 	photo: { width: "100%", height: "100%", borderRadius: 50, objectFit: "cover" },
 	sideText: { fontSize: 9.5, color: "rgba(255,255,255,0.88)", marginBottom: 4 },
 	sideTag: {
-		color: "#ffffff",
 		backgroundColor: "rgba(255,255,255,0.16)",
 		borderRadius: 8,
 		paddingHorizontal: 7,
-		paddingVertical: 3.5,
+		paddingVertical: 4,
 		marginRight: 4,
 		marginBottom: 4,
-		fontSize: 8.5,
+		alignItems: "center",
+		justifyContent: "center",
 	},
+	sideTagText: { color: "#ffffff", fontSize: 8.5, lineHeight: 1 },
 	sideLangName: { color: "#ffffff", fontWeight: 700, fontSize: 9.5 },
 	dot: { color: "rgba(255,255,255,0.6)" },
 });
@@ -158,9 +160,9 @@ function ClassicPdf({ cv }: { cv: CV }) {
 				<MainTitle accent={cv.accent}>Compétences</MainTitle>
 				<View style={shared.tagRow}>
 					{lines(cv.skills).map((skill) => (
-						<Text key={skill} style={classicStyles.tag}>
-							{skill}
-						</Text>
+						<View key={skill} style={classicStyles.tag}>
+							<Text style={classicStyles.tagText}>{skill}</Text>
+						</View>
 					))}
 				</View>
 
@@ -217,9 +219,9 @@ function SidebarPdf({ cv }: { cv: CV }) {
 					<SideTitle>Compétences</SideTitle>
 					<View style={shared.tagRow}>
 						{lines(cv.skills).map((skill) => (
-							<Text key={skill} style={sidebarStyles.sideTag}>
-								{skill}
-							</Text>
+							<View key={skill} style={sidebarStyles.sideTag}>
+								<Text style={sidebarStyles.sideTagText}>{skill}</Text>
+							</View>
 						))}
 					</View>
 
