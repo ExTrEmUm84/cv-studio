@@ -445,7 +445,7 @@ function Preview({ cv }: { cv: CV }) {
 	);
 }
 
-export function CVStudioApp() {
+function CVStudioMain() {
 	const [cv, setCv] = useState<CV>(() => {
 		try {
 			const stored = localStorage.getItem(storageKey);
@@ -534,5 +534,56 @@ export function CVStudioApp() {
 				)}
 			</section>
 		</div>
+	);
+}
+
+/**
+ * Light client-side password gate. NOTE: this is a static site, so the password
+ * lives in the bundle and can be bypassed by anyone technical — it only keeps
+ * casual visitors out and is NOT real security.
+ */
+function PasswordGate({ children }: { children: React.ReactNode }) {
+	const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem("cv-studio-unlocked") === "1");
+	const [value, setValue] = useState("");
+	const [error, setError] = useState(false);
+	if (unlocked) return <>{children}</>;
+	const submit = (event: React.FormEvent) => {
+		event.preventDefault();
+		if (value.trim().toLowerCase() === atob("bm91cmhhaW5l")) {
+			sessionStorage.setItem("cv-studio-unlocked", "1");
+			setUnlocked(true);
+		} else {
+			setError(true);
+		}
+	};
+	return (
+		<div className="cv-gate">
+			<form className="cv-gate-card" onSubmit={submit}>
+				<div className="cv-gate-mark">
+					<EgyptFlag />
+				</div>
+				<h1>Nourhaine Studio</h1>
+				<p>Espace protégé — entre le mot de passe pour continuer.</p>
+				<input
+					type="password"
+					value={value}
+					placeholder="Mot de passe"
+					onChange={(event) => {
+						setValue(event.target.value);
+						setError(false);
+					}}
+				/>
+				{error && <span className="cv-gate-error">Mot de passe incorrect.</span>}
+				<button type="submit">Déverrouiller</button>
+			</form>
+		</div>
+	);
+}
+
+export function CVStudioApp() {
+	return (
+		<PasswordGate>
+			<CVStudioMain />
+		</PasswordGate>
 	);
 }
