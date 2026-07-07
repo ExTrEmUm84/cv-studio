@@ -39,7 +39,9 @@ jobs:
       - name: Build static app
         env:
           VITE_CV_STUDIO_STATIC: "true"
-          VITE_BASE_PATH: /reactive-resume/
+          # Base path = the repo name, so the same workflow deploys correctly on any fork/copy
+          # (e.g. /reactive-resume/ here, /<other-repo>/ on a duplicate).
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
         run: pnpm --filter web build
 
       - name: Add SPA fallback
