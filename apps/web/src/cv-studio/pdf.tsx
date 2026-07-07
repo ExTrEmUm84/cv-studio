@@ -260,7 +260,7 @@ const SectionBlock = ({
 	mode: SectionBreakMode;
 	allowBreak: boolean;
 }) => (
-	<View wrap={mode === "keep" ? false : undefined} break={mode === "newpage" && allowBreak ? true : undefined}>
+	<View wrap={mode !== "keep"} break={mode === "newpage" && allowBreak ? true : undefined}>
 		<SectionTitle label={SECTION_LABELS[id]} col={col} />
 		<SectionContent id={id} cv={cv} col={col} />
 	</View>
