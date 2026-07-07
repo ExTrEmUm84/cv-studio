@@ -1,12 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
 	<title>CV Studio</title>
-	<defs>
-		<clipPath id="rounded"><rect width="256" height="256" rx="56" /></clipPath>
-	</defs>
-	<g clip-path="url(#rounded)">
-		<rect width="256" height="256" fill="#ffffff" />
-		<rect width="256" height="85.333" fill="#ce1126" />
-		<rect y="170.667" width="256" height="85.333" fill="#111111" />
-		<circle cx="128" cy="128" r="30" fill="#c8a02a" />
-	</g>
+	<rect width="256" height="256" rx="56" fill="#123047" />
+	<circle cx="92" cy="96" r="24" fill="#ffffff" />
+	<rect x="132" y="74" width="72" height="18" rx="9" fill="#ffffff" />
+	<rect x="132" y="102" width="52" height="15" rx="7.5" fill="#9fc3e8" />
+	<rect x="52" y="158" width="152" height="17" rx="8.5" fill="#ffffff" fill-opacity="0.9" />
+	<rect x="52" y="192" width="152" height="17" rx="8.5" fill="#ffffff" fill-opacity="0.5" />
 </svg>

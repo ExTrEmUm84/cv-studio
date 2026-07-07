@@ -31,13 +31,15 @@ import {
 import { CVPdf } from "./pdf";
 import "./styles.css";
 
-function EgyptFlag() {
+function BrandMark() {
 	return (
-		<svg className="cv-flag" viewBox="0 0 30 20" preserveAspectRatio="none" role="img" aria-label="Drapeau égyptien">
-			<rect width="30" height="6.667" fill="#ce1126" />
-			<rect y="6.667" width="30" height="6.666" fill="#fff" />
-			<rect y="13.333" width="30" height="6.667" fill="#111" />
-			<circle cx="15" cy="10" r="2.4" fill="#c8a02a" />
+		<svg className="cv-brandmark" viewBox="0 0 32 32" role="img" aria-label="CV Studio">
+			<rect width="32" height="32" rx="8" fill="#123047" />
+			<circle cx="11.5" cy="12" r="3.2" fill="#fff" />
+			<rect x="17" y="9.2" width="9" height="2.4" rx="1.2" fill="#fff" />
+			<rect x="17" y="13" width="6.5" height="2" rx="1" fill="#9fc3e8" />
+			<rect x="6.5" y="20" width="19" height="2.2" rx="1.1" fill="#fff" fillOpacity="0.9" />
+			<rect x="6.5" y="24.4" width="19" height="2.2" rx="1.1" fill="#fff" fillOpacity="0.5" />
 		</svg>
 	);
 }
@@ -406,10 +408,10 @@ function Editor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 		<aside className="cv-editor">
 			<div className="cv-logo">
 				<div className="cv-logo-mark">
-					<EgyptFlag />
+					<BrandMark />
 				</div>
 				<div>
-					<strong>Nourhaine Studio</strong>
+					<strong>CV Studio</strong>
 					<small>éditeur local</small>
 				</div>
 			</div>
@@ -778,52 +780,6 @@ function CVStudioMain() {
 	);
 }
 
-/**
- * Light client-side password gate. NOTE: this is a static site, so the password
- * lives in the bundle and can be bypassed by anyone technical — it only keeps
- * casual visitors out and is NOT real security.
- */
-function PasswordGate({ children }: { children: React.ReactNode }) {
-	const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem("cv-studio-unlocked") === "1");
-	const [value, setValue] = useState("");
-	const [error, setError] = useState(false);
-	if (unlocked) return <>{children}</>;
-	const submit = (event: React.FormEvent) => {
-		event.preventDefault();
-		if (value.trim().toLowerCase() === atob("bm91cmhhaW5l")) {
-			sessionStorage.setItem("cv-studio-unlocked", "1");
-			setUnlocked(true);
-		} else {
-			setError(true);
-		}
-	};
-	return (
-		<div className="cv-gate">
-			<form className="cv-gate-card" onSubmit={submit}>
-				<div className="cv-gate-mark">
-					<EgyptFlag />
-				</div>
-				<p>Espace protégé — entre le mot de passe pour continuer.</p>
-				<input
-					type="password"
-					value={value}
-					placeholder="Mot de passe"
-					onChange={(event) => {
-						setValue(event.target.value);
-						setError(false);
-					}}
-				/>
-				{error && <span className="cv-gate-error">Mot de passe incorrect.</span>}
-				<button type="submit">Déverrouiller</button>
-			</form>
-		</div>
-	);
-}
-
 export function CVStudioApp() {
-	return (
-		<PasswordGate>
-			<CVStudioMain />
-		</PasswordGate>
-	);
+	return <CVStudioMain />;
 }
