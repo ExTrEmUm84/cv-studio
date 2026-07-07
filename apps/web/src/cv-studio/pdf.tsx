@@ -338,7 +338,7 @@ const ContactList = ({
 // ---------------------------------------------------------------------------
 
 type Template = {
-	structure: "single" | "sidebar" | "banded";
+	structure: "single" | "sidebar" | "banded" | "topband";
 	page: Style;
 	main: Column;
 	side: Column;
@@ -346,10 +346,12 @@ type Template = {
 	Header: () => ReactNode;
 	/** pinned photo + contacts at the top of the accent sidebar (sidebar structure). */
 	SideHeader?: () => ReactNode;
-	/** full-width banner across the top (banded structure). */
+	/** full-width banner across the top (banded / topband structures). */
 	Banner?: () => ReactNode;
+	/** padded body container for the single column under a topband banner. */
+	body?: Style;
 	sideBg?: string; // sidebar structure: accent column background
-	sideOnLeft?: boolean; // banded structure: which side the narrow column sits
+	sideOnLeft?: boolean; // sidebar/banded: which side the narrow column sits (default left)
 };
 
 const resolveTemplate = (cv: CV): Template => {
@@ -403,7 +405,177 @@ const resolveTemplate = (cv: CV): Template => {
 		</>
 	);
 
+	// Pinned photo + contacts for the solid-accent sidebar (shared by the left- and right-side variants).
+	const accentSideHeader = () => (
+		<>
+			{cv.photo && (
+				<View
+					style={{
+						width: 132,
+						height: 132,
+						borderRadius: 66,
+						alignSelf: "center",
+						marginBottom: 18,
+						padding: 3,
+						backgroundColor: "rgba(255,255,255,0.16)",
+					}}
+				>
+					<Image src={cv.photo} style={{ width: "100%", height: "100%", borderRadius: 63, objectFit: "cover" }} />
+				</View>
+			)}
+			<SectionTitle label="Coordonnées" col={accentSide} />
+			{contactItems(cv).map((item) => (
+				<View key={item.key} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5 }}>
+					{cv.showIcons && <ContactIcon name={item.key} color={cv.iconColor || "#e6edf5"} />}
+					<Text
+						style={{
+							fontSize: 9.5,
+							lineHeight: 1,
+							color: "rgba(255,255,255,0.88)",
+							marginLeft: cv.showIcons ? 6 : 0,
+							flex: 1,
+						}}
+					>
+						{item.value}
+					</Text>
+				</View>
+			))}
+		</>
+	);
+
 	switch (cv.template) {
+		case "glalie": {
+			// Single column with a centred header (photo + name + title + contacts all centred).
+			const glalieMain = makeColumn({
+				side: false,
+				text: "#27364a",
+				muted: "#8894a3",
+				title: "#1f2933",
+				rule: accent,
+				heading: "#1f2933",
+				tagBg: "#f1f3f6",
+				tagText: "#3e4c59",
+				dotFilled: accent,
+				dotEmpty: "#e2e6ec",
+				langBorder: "#f0f2f5",
+			});
+			return {
+				structure: "single",
+				page: { paddingHorizontal: 52, paddingVertical: 44, fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				main: glalieMain,
+				side: glalieMain,
+				Header: () => (
+					<View
+						style={{
+							alignItems: "center",
+							borderBottomWidth: 1,
+							borderBottomColor: "#e4e7eb",
+							paddingBottom: 14,
+							marginBottom: 6,
+						}}
+					>
+						{cv.photo && (
+							<Image
+								src={cv.photo}
+								style={{ width: 88, height: 88, borderRadius: 44, objectFit: "cover", marginBottom: 10 }}
+							/>
+						)}
+						<Text style={[shared.name, { color: "#101820", fontSize: 27, textAlign: "center" }]}>{cv.name}</Text>
+						<Text style={[shared.role, { color: accent, fontSize: 13, textAlign: "center" }]}>{cv.title}</Text>
+						<ContactList cv={cv} color="#667085" iconColor={cv.iconColor || "#98a2b3"} center />
+					</View>
+				),
+			};
+		}
+
+		case "scizor":
+			// Full-width solid-accent banner across the top, single column below.
+			return {
+				structure: "topband",
+				page: { fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				body: { paddingHorizontal: 40, paddingTop: 18, paddingBottom: 32 },
+				main: lightMain,
+				side: lightMain,
+				Header: () => null,
+				Banner: () => (
+					<View
+						style={{
+							backgroundColor: accent,
+							paddingHorizontal: 40,
+							paddingVertical: 24,
+							flexDirection: "row",
+							alignItems: "center",
+							gap: 18,
+						}}
+					>
+						{cv.photo && (
+							<Image
+								src={cv.photo}
+								style={{
+									width: 78,
+									height: 78,
+									borderRadius: 39,
+									objectFit: "cover",
+									borderWidth: 2,
+									borderColor: "rgba(255,255,255,0.4)",
+								}}
+							/>
+						)}
+						<View style={{ flex: 1 }}>
+							<Text style={[shared.name, { color: "#ffffff", fontSize: 25 }]}>{cv.name}</Text>
+							<Text style={[shared.role, { color: "rgba(255,255,255,0.85)" }]}>{cv.title}</Text>
+							<ContactList cv={cv} color="rgba(255,255,255,0.92)" iconColor="#ffffff" />
+						</View>
+					</View>
+				),
+			};
+
+		case "lapras":
+			// Soft tinted top banner + accent rule, single column below.
+			return {
+				structure: "topband",
+				page: { fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				body: { paddingHorizontal: 42, paddingTop: 16, paddingBottom: 32 },
+				main: lightMain,
+				side: lightMain,
+				Header: () => null,
+				Banner: () => (
+					<View
+						style={{
+							backgroundColor: tint(accent, 0.12),
+							paddingHorizontal: 42,
+							paddingVertical: 22,
+							flexDirection: "row",
+							alignItems: "center",
+							gap: 18,
+							borderBottomWidth: 2,
+							borderBottomColor: accent,
+						}}
+					>
+						{cv.photo && (
+							<Image src={cv.photo} style={{ width: 76, height: 76, borderRadius: 38, objectFit: "cover" }} />
+						)}
+						<View style={{ flex: 1 }}>
+							{nameBlock(accent, 25)}
+							<ContactList cv={cv} color="#667085" iconColor={cv.iconColor || accent} />
+						</View>
+					</View>
+				),
+			};
+
+		case "meowth":
+			// Solid-accent sidebar on the RIGHT.
+			return {
+				structure: "sidebar",
+				page: { flexDirection: "row", fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				main: lightMain,
+				side: accentSide,
+				sideBg: accent,
+				sideOnLeft: false,
+				Header: () => <View style={{ marginBottom: 2 }}>{nameBlock(accent)}</View>,
+				SideHeader: accentSideHeader,
+			};
+
 		case "onyx": {
 			// Single column, section titles underlined by a full-width hairline (traditional résumé look).
 			const onyxMain = makeColumn({
@@ -528,42 +700,7 @@ const resolveTemplate = (cv: CV): Template => {
 				side: accentSide,
 				sideBg: accent,
 				Header: () => <View style={{ marginBottom: 2 }}>{nameBlock(accent)}</View>,
-				SideHeader: () => (
-					<>
-						{cv.photo && (
-							<View
-								style={{
-									width: 132,
-									height: 132,
-									borderRadius: 66,
-									alignSelf: "center",
-									marginBottom: 18,
-									padding: 3,
-									backgroundColor: "rgba(255,255,255,0.16)",
-								}}
-							>
-								<Image src={cv.photo} style={{ width: "100%", height: "100%", borderRadius: 63, objectFit: "cover" }} />
-							</View>
-						)}
-						<SectionTitle label="Coordonnées" col={accentSide} />
-						{contactItems(cv).map((item) => (
-							<View key={item.key} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5 }}>
-								{cv.showIcons && <ContactIcon name={item.key} color={cv.iconColor || "#e6edf5"} />}
-								<Text
-									style={{
-										fontSize: 9.5,
-										lineHeight: 1,
-										color: "rgba(255,255,255,0.88)",
-										marginLeft: cv.showIcons ? 6 : 0,
-										flex: 1,
-									}}
-								>
-									{item.value}
-								</Text>
-							</View>
-						))}
-					</>
-				),
+				SideHeader: accentSideHeader,
 			};
 
 		case "pikachu":
@@ -755,23 +892,54 @@ const SidebarPage = ({
 	page: PageLayout;
 	first: boolean;
 	sideWidth: number;
-}) => (
-	<Page size="A4" style={t.page}>
-		<View
-			fixed
-			style={{ position: "absolute", top: 0, left: 0, width: sideWidth, height: "100%", backgroundColor: t.sideBg }}
-		>
-			<Svg width={sideWidth} height={A4_HEIGHT} style={{ position: "absolute", top: 0, left: 0 }}>
-				{patternDots(sideWidth)}
-			</Svg>
-		</View>
+}) => {
+	const onLeft = t.sideOnLeft !== false; // default: sidebar on the left
+	const side = (
 		<View style={{ width: sideWidth, paddingTop: 30, paddingBottom: 26, paddingHorizontal: 20 }}>
 			{first && t.SideHeader?.()}
 			<Sections ids={page.sidebar} cv={cv} col={t.side} allowNewPage={false} />
 		</View>
+	);
+	const main = (
 		<View style={{ flex: 1, paddingTop: 34, paddingBottom: 30, paddingHorizontal: 28 }}>
 			{first && t.Header()}
 			<Sections ids={page.main} cv={cv} col={t.main} firstOnPage={first} />
+		</View>
+	);
+	return (
+		<Page size="A4" style={t.page}>
+			<View
+				fixed
+				style={
+					onLeft
+						? { position: "absolute", top: 0, left: 0, width: sideWidth, height: "100%", backgroundColor: t.sideBg }
+						: { position: "absolute", top: 0, right: 0, width: sideWidth, height: "100%", backgroundColor: t.sideBg }
+				}
+			>
+				<Svg width={sideWidth} height={A4_HEIGHT} style={{ position: "absolute", top: 0, left: 0 }}>
+					{patternDots(sideWidth)}
+				</Svg>
+			</View>
+			{onLeft ? (
+				<>
+					{side}
+					{main}
+				</>
+			) : (
+				<>
+					{main}
+					{side}
+				</>
+			)}
+		</Page>
+	);
+};
+
+const TopBandPage = ({ cv, t, page, first }: { cv: CV; t: Template; page: PageLayout; first: boolean }) => (
+	<Page size="A4" style={t.page}>
+		{first && t.Banner?.()}
+		<View style={t.body}>
+			<Sections ids={[...page.main, ...page.sidebar]} cv={cv} col={t.main} firstOnPage={first} />
 		</View>
 	</Page>
 );
@@ -831,6 +999,7 @@ export function CVPdf({ cv }: { cv: CV }) {
 					return <SidebarPage key={index} cv={cv} t={t} page={page} first={first} sideWidth={sideWidth} />;
 				if (t.structure === "banded")
 					return <BandedPage key={index} cv={cv} t={t} page={page} first={first} sideWidth={sideWidth} />;
+				if (t.structure === "topband") return <TopBandPage key={index} cv={cv} t={t} page={page} first={first} />;
 				return <SinglePage key={index} cv={cv} t={t} page={page} first={first} />;
 			})}
 		</Document>

@@ -6,9 +6,13 @@ export type TemplateKey =
 	| "classic"
 	| "minimal"
 	| "onyx"
+	| "glalie"
 	| "rhyhorn"
+	| "scizor"
+	| "lapras"
 	| "sidebar"
 	| "gengar"
+	| "meowth"
 	| "pikachu"
 	| "leafish"
 	| "ditto";
@@ -17,16 +21,20 @@ export const TEMPLATES: { key: TemplateKey; label: string }[] = [
 	{ key: "classic", label: "Classique premium" },
 	{ key: "minimal", label: "Minimaliste" },
 	{ key: "onyx", label: "Lignes classiques" },
+	{ key: "glalie", label: "Centré épuré" },
 	{ key: "rhyhorn", label: "Filet & photo à droite" },
+	{ key: "scizor", label: "Bandeau plein" },
+	{ key: "lapras", label: "Bandeau doux" },
 	{ key: "sidebar", label: "Colonne latérale" },
 	{ key: "gengar", label: "Latérale douce" },
+	{ key: "meowth", label: "Latérale à droite" },
 	{ key: "pikachu", label: "Bandeau coloré" },
 	{ key: "leafish", label: "Bandeaux teintés" },
 	{ key: "ditto", label: "Bannière centrée" },
 ];
 
 /** Templates that use the two-column (accent sidebar / banded) layout. */
-export const TWO_COLUMN_TEMPLATES: TemplateKey[] = ["sidebar", "gengar", "pikachu", "leafish", "ditto"];
+export const TWO_COLUMN_TEMPLATES: TemplateKey[] = ["sidebar", "gengar", "meowth", "pikachu", "leafish", "ditto"];
 
 /** The draggable content blocks. The header (name/photo/contacts) is fixed and not a section. */
 export type SectionId = "profile" | "experiences" | "education" | "skills" | "languages" | "interests";
