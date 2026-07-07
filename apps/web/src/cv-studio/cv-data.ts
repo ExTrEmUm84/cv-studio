@@ -103,12 +103,14 @@ export type CV = {
 };
 
 /**
- * Default per-section options. Short list-like sections stay whole (as the classic PDF always did);
- * the long, flowing ones (profil, expériences) may span pages — individual entries never split.
+ * Default per-section options. Entry-list sections that can grow long (profil, expériences,
+ * formation) flow across pages so they fill the space — individual entries never split. The short
+ * blocks (compétences, langues, intérêts) stay whole to avoid an awkward tail on the next page.
  */
+const FLOW_BY_DEFAULT: SectionId[] = ["profile", "experiences", "education"];
 export const defaultSectionOptions = (): Record<SectionId, SectionOptions> =>
 	Object.fromEntries(
-		SECTION_ORDER.map((id) => [id, { mode: id === "profile" || id === "experiences" ? "flow" : "keep" }]),
+		SECTION_ORDER.map((id) => [id, { mode: FLOW_BY_DEFAULT.includes(id) ? "flow" : "keep" }]),
 	) as Record<SectionId, SectionOptions>;
 
 /** Coerce stored section options to the current shape (migrates the legacy `{ keepTogether }` flag). */
