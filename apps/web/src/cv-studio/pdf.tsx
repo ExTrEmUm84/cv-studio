@@ -492,8 +492,8 @@ const resolveTemplate = (cv: CV): Template => {
 			// Full-width solid-accent banner across the top, single column below.
 			return {
 				structure: "topband",
-				page: { fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
-				body: { paddingHorizontal: 40, paddingTop: 18, paddingBottom: 32 },
+				page: { fontFamily: "Helvetica", color: "#1f2933", fontSize: 10, paddingTop: 30, paddingBottom: 30 },
+				body: { paddingHorizontal: 40, paddingTop: 18 },
 				main: lightMain,
 				side: lightMain,
 				Header: () => null,
@@ -534,8 +534,8 @@ const resolveTemplate = (cv: CV): Template => {
 			// Soft tinted top banner + accent rule, single column below.
 			return {
 				structure: "topband",
-				page: { fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
-				body: { paddingHorizontal: 42, paddingTop: 16, paddingBottom: 32 },
+				page: { fontFamily: "Helvetica", color: "#1f2933", fontSize: 10, paddingTop: 30, paddingBottom: 30 },
+				body: { paddingHorizontal: 42, paddingTop: 16 },
 				main: lightMain,
 				side: lightMain,
 				Header: () => null,
@@ -567,7 +567,14 @@ const resolveTemplate = (cv: CV): Template => {
 			// Solid-accent sidebar on the RIGHT.
 			return {
 				structure: "sidebar",
-				page: { flexDirection: "row", fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				page: {
+					flexDirection: "row",
+					fontFamily: "Helvetica",
+					color: "#1f2933",
+					fontSize: 10,
+					paddingTop: 30,
+					paddingBottom: 30,
+				},
 				main: lightMain,
 				side: accentSide,
 				sideBg: accent,
@@ -624,7 +631,14 @@ const resolveTemplate = (cv: CV): Template => {
 		case "gengar":
 			return {
 				structure: "sidebar",
-				page: { flexDirection: "row", fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				page: {
+					flexDirection: "row",
+					fontFamily: "Helvetica",
+					color: "#1f2933",
+					fontSize: 10,
+					paddingTop: 30,
+					paddingBottom: 30,
+				},
 				main: lightMain,
 				side: tintSide,
 				sideBg: tint(accent, 0.12),
@@ -664,7 +678,7 @@ const resolveTemplate = (cv: CV): Template => {
 		case "ditto":
 			return {
 				structure: "banded",
-				page: { fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				page: { fontFamily: "Helvetica", color: "#1f2933", fontSize: 10, paddingTop: 30, paddingBottom: 30 },
 				main: lightMain,
 				side: tintSide,
 				sideOnLeft: false,
@@ -695,7 +709,14 @@ const resolveTemplate = (cv: CV): Template => {
 		case "sidebar":
 			return {
 				structure: "sidebar",
-				page: { flexDirection: "row", fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				page: {
+					flexDirection: "row",
+					fontFamily: "Helvetica",
+					color: "#1f2933",
+					fontSize: 10,
+					paddingTop: 30,
+					paddingBottom: 30,
+				},
 				main: lightMain,
 				side: accentSide,
 				sideBg: accent,
@@ -706,7 +727,7 @@ const resolveTemplate = (cv: CV): Template => {
 		case "pikachu":
 			return {
 				structure: "banded",
-				page: { fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				page: { fontFamily: "Helvetica", color: "#1f2933", fontSize: 10, paddingTop: 30, paddingBottom: 30 },
 				main: lightMain,
 				side: tintSide,
 				sideOnLeft: true,
@@ -746,7 +767,7 @@ const resolveTemplate = (cv: CV): Template => {
 		case "leafish":
 			return {
 				structure: "banded",
-				page: { fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				page: { fontFamily: "Helvetica", color: "#1f2933", fontSize: 10, paddingTop: 30, paddingBottom: 30 },
 				main: lightMain,
 				side: tintSide,
 				sideOnLeft: false,
@@ -894,14 +915,16 @@ const SidebarPage = ({
 	sideWidth: number;
 }) => {
 	const onLeft = t.sideOnLeft !== false; // default: sidebar on the left
+	// Vertical padding lives on the Page so EVERY page (including flow-continuation pages) keeps a
+	// top/bottom margin; the columns only pad horizontally.
 	const side = (
-		<View style={{ width: sideWidth, paddingTop: 30, paddingBottom: 26, paddingHorizontal: 20 }}>
+		<View style={{ width: sideWidth, paddingHorizontal: 20 }}>
 			{first && t.SideHeader?.()}
 			<Sections ids={page.sidebar} cv={cv} col={t.side} allowNewPage={false} />
 		</View>
 	);
 	const main = (
-		<View style={{ flex: 1, paddingTop: 34, paddingBottom: 30, paddingHorizontal: 28 }}>
+		<View style={{ flex: 1, paddingHorizontal: 28 }}>
 			{first && t.Header()}
 			<Sections ids={page.main} cv={cv} col={t.main} firstOnPage={first} />
 		</View>
@@ -912,8 +935,8 @@ const SidebarPage = ({
 				fixed
 				style={
 					onLeft
-						? { position: "absolute", top: 0, left: 0, width: sideWidth, height: "100%", backgroundColor: t.sideBg }
-						: { position: "absolute", top: 0, right: 0, width: sideWidth, height: "100%", backgroundColor: t.sideBg }
+						? { position: "absolute", top: 0, left: 0, width: sideWidth, height: A4_HEIGHT, backgroundColor: t.sideBg }
+						: { position: "absolute", top: 0, right: 0, width: sideWidth, height: A4_HEIGHT, backgroundColor: t.sideBg }
 				}
 			>
 				<Svg width={sideWidth} height={A4_HEIGHT} style={{ position: "absolute", top: 0, left: 0 }}>
@@ -936,8 +959,10 @@ const SidebarPage = ({
 };
 
 const TopBandPage = ({ cv, t, page, first }: { cv: CV; t: Template; page: PageLayout; first: boolean }) => (
+	// Vertical padding on the Page gives every page (incl. flow-continuation pages) a top/bottom margin;
+	// the banner escapes the top padding with a negative margin so it stays full-bleed on page 1.
 	<Page size="A4" style={t.page}>
-		{first && t.Banner?.()}
+		{first && <View style={{ marginTop: -30 }}>{t.Banner?.()}</View>}
 		<View style={t.body}>
 			<Sections ids={[...page.main, ...page.sidebar]} cv={cv} col={t.main} firstOnPage={first} />
 		</View>
@@ -972,14 +997,13 @@ const BandedPage = ({
 	);
 	return (
 		<Page size="A4" style={t.page}>
-			{first && t.Banner?.()}
+			{first && <View style={{ marginTop: -30 }}>{t.Banner?.()}</View>}
 			<View
 				style={{
 					flexDirection: "row",
 					gap: hasSide ? 22 : 0,
 					paddingHorizontal: 34,
 					paddingTop: 18,
-					paddingBottom: 24,
 				}}
 			>
 				{t.sideOnLeft ? (
