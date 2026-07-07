@@ -1,7 +1,10 @@
 import type { ComponentProps, ReactNode } from "react";
 import type { ContactKey, CV, PageLayout, SectionBreakMode, SectionId } from "./cv-data";
-import { Circle, Document, Image, Page, Path, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
+import { Circle, Document, Font, Image, Page, Path, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import { contactItems, lines, normalizeLayout, parseLanguage, SECTION_LABELS } from "./cv-data";
+
+// Keep words whole (no mid-word hyphenation) so ATS keyword matching isn't broken by "négocia-tion".
+Font.registerHyphenationCallback((word) => [word]);
 
 /** react-pdf's Style type, derived from the Page style prop (avoids depending on @react-pdf/types). */
 type Style = NonNullable<ComponentProps<typeof Page>["style"]>;
@@ -117,7 +120,7 @@ const makeColumn = (c: ColumnConfig) => ({
 	cfg: c,
 	styles: StyleSheet.create({
 		titleWrap: { marginTop: c.side ? 16 : 13, marginBottom: c.side ? 7 : 6 },
-		titleText: { fontSize: c.side ? 9 : 9.5, letterSpacing: 1.3, color: c.title, fontWeight: 700 },
+		titleText: { fontSize: c.side ? 9 : 9.5, letterSpacing: 0.7, color: c.title, fontWeight: 700 },
 		profile: {
 			fontFamily: "Times-Italic",
 			fontSize: c.side ? 9.5 : 11,
