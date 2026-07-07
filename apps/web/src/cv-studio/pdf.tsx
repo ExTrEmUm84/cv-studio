@@ -103,6 +103,7 @@ type ColumnConfig = {
 	muted: string; // meta line colour
 	title: string; // section-title text colour
 	rule?: string; // section-title underline colour (omit for no rule)
+	ruleWide?: boolean; // draw the rule as a full-width hairline under the title (traditional look)
 	heading: string; // entry-title colour
 	tagBg: string;
 	tagText: string;
@@ -159,7 +160,11 @@ const SectionTitle = ({ label, col }: { label: string; col: Column }) => (
 	<View style={col.styles.titleWrap} minPresenceAhead={46}>
 		<Text style={col.styles.titleText}>{label.toUpperCase()}</Text>
 		{col.cfg.rule ? (
-			<View style={{ width: 24, height: 2, backgroundColor: col.cfg.rule, borderRadius: 1, marginTop: 4 }} />
+			col.cfg.ruleWide ? (
+				<View style={{ height: 1, backgroundColor: col.cfg.rule, marginTop: 4 }} />
+			) : (
+				<View style={{ width: 24, height: 2, backgroundColor: col.cfg.rule, borderRadius: 1, marginTop: 4 }} />
+			)
 		) : null}
 	</View>
 );
@@ -299,13 +304,23 @@ const ContactList = ({
 	color,
 	iconColor,
 	dividerColor,
+	center,
 }: {
 	cv: CV;
 	color: string;
 	iconColor: string;
 	dividerColor?: string;
+	center?: boolean;
 }) => (
-	<View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", marginTop: 5 }}>
+	<View
+		style={{
+			flexDirection: "row",
+			flexWrap: "wrap",
+			alignItems: "center",
+			justifyContent: center ? "center" : "flex-start",
+			marginTop: 5,
+		}}
+	>
 		{contactItems(cv).map((item, index) => (
 			<View key={item.key} style={{ flexDirection: "row", alignItems: "center", marginRight: 10, marginBottom: 3 }}>
 				{dividerColor && index > 0 ? (
@@ -389,6 +404,122 @@ const resolveTemplate = (cv: CV): Template => {
 	);
 
 	switch (cv.template) {
+		case "onyx": {
+			// Single column, section titles underlined by a full-width hairline (traditional résumé look).
+			const onyxMain = makeColumn({
+				side: false,
+				text: "#27364a",
+				muted: "#7b8794",
+				title: accent,
+				rule: accent,
+				ruleWide: true,
+				heading: "#1f2933",
+				tagBg: "#eef2f6",
+				tagText: "#3e4c59",
+				dotFilled: accent,
+				dotEmpty: "#dde3ea",
+				langBorder: "#f0f2f5",
+			});
+			return {
+				structure: "single",
+				page: { paddingHorizontal: 44, paddingVertical: 36, fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				main: onyxMain,
+				side: onyxMain,
+				Header: () => (
+					<View
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							gap: 16,
+							borderBottomWidth: 2,
+							borderBottomColor: accent,
+							paddingBottom: 11,
+							marginBottom: 3,
+						}}
+					>
+						{cv.photo && (
+							<Image src={cv.photo} style={{ width: 84, height: 84, borderRadius: 42, objectFit: "cover" }} />
+						)}
+						<View style={{ flex: 1 }}>
+							{nameBlock(accent, 25)}
+							<ContactList cv={cv} color="#667085" iconColor={cv.iconColor || accent} />
+						</View>
+					</View>
+				),
+			};
+		}
+
+		case "gengar":
+			return {
+				structure: "sidebar",
+				page: { flexDirection: "row", fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				main: lightMain,
+				side: tintSide,
+				sideBg: tint(accent, 0.12),
+				Header: () => <View style={{ marginBottom: 2 }}>{nameBlock(accent)}</View>,
+				SideHeader: () => (
+					<>
+						{cv.photo && (
+							<View
+								style={{
+									width: 130,
+									height: 130,
+									borderRadius: 65,
+									alignSelf: "center",
+									marginBottom: 16,
+									padding: 3,
+									backgroundColor: "#ffffff",
+								}}
+							>
+								<Image src={cv.photo} style={{ width: "100%", height: "100%", borderRadius: 62, objectFit: "cover" }} />
+							</View>
+						)}
+						<SectionTitle label="Coordonnées" col={tintSide} />
+						{contactItems(cv).map((item) => (
+							<View key={item.key} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5 }}>
+								{cv.showIcons && <ContactIcon name={item.key} color={cv.iconColor || accent} />}
+								<Text
+									style={{ fontSize: 9.5, lineHeight: 1, color: "#3e4c59", marginLeft: cv.showIcons ? 6 : 0, flex: 1 }}
+								>
+									{item.value}
+								</Text>
+							</View>
+						))}
+					</>
+				),
+			};
+
+		case "ditto":
+			return {
+				structure: "banded",
+				page: { fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				main: lightMain,
+				side: tintSide,
+				sideOnLeft: false,
+				Header: () => null,
+				Banner: () => (
+					<View style={{ backgroundColor: accent, paddingHorizontal: 34, paddingVertical: 22, alignItems: "center" }}>
+						{cv.photo && (
+							<Image
+								src={cv.photo}
+								style={{
+									width: 76,
+									height: 76,
+									borderRadius: 38,
+									objectFit: "cover",
+									borderWidth: 2,
+									borderColor: "rgba(255,255,255,0.4)",
+									marginBottom: 9,
+								}}
+							/>
+						)}
+						<Text style={[shared.name, { color: "#ffffff", fontSize: 24, textAlign: "center" }]}>{cv.name}</Text>
+						<Text style={[shared.role, { color: "rgba(255,255,255,0.85)", textAlign: "center" }]}>{cv.title}</Text>
+						<ContactList cv={cv} color="rgba(255,255,255,0.92)" iconColor="#ffffff" center />
+					</View>
+				),
+			};
+
 		case "sidebar":
 			return {
 				structure: "sidebar",

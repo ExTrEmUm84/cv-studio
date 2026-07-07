@@ -2,19 +2,31 @@ export type Experience = { role: string; company: string; date: string; place: s
 export type Education = { degree: string; school: string; date: string; place: string };
 
 /** Available page designs. Order here drives the template picker. */
-export type TemplateKey = "classic" | "minimal" | "sidebar" | "pikachu" | "leafish" | "rhyhorn";
+export type TemplateKey =
+	| "classic"
+	| "minimal"
+	| "onyx"
+	| "rhyhorn"
+	| "sidebar"
+	| "gengar"
+	| "pikachu"
+	| "leafish"
+	| "ditto";
 
 export const TEMPLATES: { key: TemplateKey; label: string }[] = [
 	{ key: "classic", label: "Classique premium" },
 	{ key: "minimal", label: "Minimaliste" },
+	{ key: "onyx", label: "Lignes classiques" },
+	{ key: "rhyhorn", label: "Filet & photo à droite" },
 	{ key: "sidebar", label: "Colonne latérale" },
+	{ key: "gengar", label: "Latérale douce" },
 	{ key: "pikachu", label: "Bandeau coloré" },
 	{ key: "leafish", label: "Bandeaux teintés" },
-	{ key: "rhyhorn", label: "Filet & photo à droite" },
+	{ key: "ditto", label: "Bannière centrée" },
 ];
 
 /** Templates that use the two-column (accent sidebar / banded) layout. */
-export const TWO_COLUMN_TEMPLATES: TemplateKey[] = ["sidebar", "pikachu", "leafish"];
+export const TWO_COLUMN_TEMPLATES: TemplateKey[] = ["sidebar", "gengar", "pikachu", "leafish", "ditto"];
 
 /** The draggable content blocks. The header (name/photo/contacts) is fixed and not a section. */
 export type SectionId = "profile" | "experiences" | "education" | "skills" | "languages" | "interests";
