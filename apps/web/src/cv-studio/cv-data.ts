@@ -8,13 +8,16 @@ export type TemplateKey =
 	| "onyx"
 	| "glalie"
 	| "rhyhorn"
+	| "azurill"
 	| "scizor"
 	| "lapras"
 	| "sidebar"
 	| "gengar"
 	| "meowth"
+	| "kakuna"
 	| "pikachu"
 	| "leafish"
+	| "bronzor"
 	| "ditto";
 
 export const TEMPLATES: { key: TemplateKey; label: string }[] = [
@@ -23,25 +26,37 @@ export const TEMPLATES: { key: TemplateKey; label: string }[] = [
 	{ key: "onyx", label: "Lignes classiques" },
 	{ key: "glalie", label: "Centré épuré" },
 	{ key: "rhyhorn", label: "Filet & photo à droite" },
+	{ key: "azurill", label: "Timeline" },
 	{ key: "scizor", label: "Bandeau plein" },
 	{ key: "lapras", label: "Bandeau doux" },
 	{ key: "sidebar", label: "Colonne latérale" },
 	{ key: "gengar", label: "Latérale douce" },
 	{ key: "meowth", label: "Latérale à droite" },
+	{ key: "kakuna", label: "Latérale douce à droite" },
 	{ key: "pikachu", label: "Bandeau coloré" },
 	{ key: "leafish", label: "Bandeaux teintés" },
+	{ key: "bronzor", label: "Bandeau doux 2 colonnes" },
 	{ key: "ditto", label: "Bannière centrée" },
 ];
 
 /** Templates that use the two-column (accent sidebar / banded) layout. */
-export const TWO_COLUMN_TEMPLATES: TemplateKey[] = ["sidebar", "gengar", "meowth", "pikachu", "leafish", "ditto"];
+export const TWO_COLUMN_TEMPLATES: TemplateKey[] = [
+	"sidebar",
+	"gengar",
+	"meowth",
+	"kakuna",
+	"pikachu",
+	"leafish",
+	"bronzor",
+	"ditto",
+];
 
 /**
  * Templates with a PERMANENT side column (the accent/tinted sidebar always shows its pinned
  * photo + contacts, so its width always matters). Banded templates instead only reserve a side
  * column when the user has actually placed sections in it.
  */
-export const SIDEBAR_STRUCTURE_TEMPLATES: TemplateKey[] = ["sidebar", "gengar", "meowth"];
+export const SIDEBAR_STRUCTURE_TEMPLATES: TemplateKey[] = ["sidebar", "gengar", "meowth", "kakuna"];
 
 /** The draggable content blocks. The header (name/photo/contacts) is fixed and not a section. */
 export type SectionId = "profile" | "experiences" | "education" | "skills" | "languages" | "interests";

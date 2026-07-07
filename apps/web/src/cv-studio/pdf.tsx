@@ -110,6 +110,7 @@ type ColumnConfig = {
 	dotFilled: string;
 	dotEmpty: string;
 	langBorder: string; // divider under a language row (main variant only)
+	entryBar?: string; // when set, draws a vertical accent bar down the left of each entry (timeline look)
 };
 
 const makeColumn = (c: ColumnConfig) => ({
@@ -123,7 +124,9 @@ const makeColumn = (c: ColumnConfig) => ({
 			color: c.side ? c.text : "#3e4c59",
 			lineHeight: 1.5,
 		},
-		item: { marginBottom: 8 },
+		item: c.entryBar
+			? { marginBottom: 9, borderLeftWidth: 2, borderLeftColor: c.entryBar, paddingLeft: 11 }
+			: { marginBottom: 8 },
 		itemTitle: { fontSize: c.side ? 9.5 : 11, fontWeight: 700, color: c.heading, marginBottom: 1.5 },
 		itemMeta: { fontSize: 9, color: c.muted, marginBottom: 2.5 },
 		itemText: { fontSize: c.side ? 9 : 10, color: c.text, lineHeight: 1.4 },
@@ -443,6 +446,36 @@ const resolveTemplate = (cv: CV): Template => {
 		</>
 	);
 
+	// Pinned photo + contacts for a LIGHT tinted sidebar (dark text) — shared by gengar + kakuna.
+	const tintSideHeader = () => (
+		<>
+			{cv.photo && (
+				<View
+					style={{
+						width: 130,
+						height: 130,
+						borderRadius: 65,
+						alignSelf: "center",
+						marginBottom: 16,
+						padding: 3,
+						backgroundColor: "#ffffff",
+					}}
+				>
+					<Image src={cv.photo} style={{ width: "100%", height: "100%", borderRadius: 62, objectFit: "cover" }} />
+				</View>
+			)}
+			<SectionTitle label="Coordonnées" col={tintSide} />
+			{contactItems(cv).map((item) => (
+				<View key={item.key} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5 }}>
+					{cv.showIcons && <ContactIcon name={item.key} color={cv.iconColor || accent} />}
+					<Text style={{ fontSize: 9.5, lineHeight: 1, color: "#3e4c59", marginLeft: cv.showIcons ? 6 : 0, flex: 1 }}>
+						{item.value}
+					</Text>
+				</View>
+			))}
+		</>
+	);
+
 	switch (cv.template) {
 		case "glalie": {
 			// Single column with a centred header (photo + name + title + contacts all centred).
@@ -643,35 +676,59 @@ const resolveTemplate = (cv: CV): Template => {
 				side: tintSide,
 				sideBg: tint(accent, 0.12),
 				Header: () => <View style={{ marginBottom: 2 }}>{nameBlock(accent)}</View>,
-				SideHeader: () => (
-					<>
+				SideHeader: tintSideHeader,
+			};
+
+		case "kakuna":
+			// Light tinted sidebar on the RIGHT.
+			return {
+				structure: "sidebar",
+				page: {
+					flexDirection: "row",
+					fontFamily: "Helvetica",
+					color: "#1f2933",
+					fontSize: 10,
+					paddingTop: 30,
+					paddingBottom: 30,
+				},
+				main: lightMain,
+				side: tintSide,
+				sideBg: tint(accent, 0.12),
+				sideOnLeft: false,
+				Header: () => <View style={{ marginBottom: 2 }}>{nameBlock(accent)}</View>,
+				SideHeader: tintSideHeader,
+			};
+
+		case "bronzor":
+			// Two columns under a soft tinted banner (accent rule at its base).
+			return {
+				structure: "banded",
+				page: { fontFamily: "Helvetica", color: "#1f2933", fontSize: 10, paddingTop: 30, paddingBottom: 30 },
+				main: lightMain,
+				side: tintSide,
+				sideOnLeft: true,
+				Header: () => null,
+				Banner: () => (
+					<View
+						style={{
+							backgroundColor: tint(accent, 0.12),
+							paddingHorizontal: 34,
+							paddingVertical: 20,
+							flexDirection: "row",
+							alignItems: "center",
+							gap: 16,
+							borderBottomWidth: 2,
+							borderBottomColor: accent,
+						}}
+					>
 						{cv.photo && (
-							<View
-								style={{
-									width: 130,
-									height: 130,
-									borderRadius: 65,
-									alignSelf: "center",
-									marginBottom: 16,
-									padding: 3,
-									backgroundColor: "#ffffff",
-								}}
-							>
-								<Image src={cv.photo} style={{ width: "100%", height: "100%", borderRadius: 62, objectFit: "cover" }} />
-							</View>
+							<Image src={cv.photo} style={{ width: 70, height: 70, borderRadius: 35, objectFit: "cover" }} />
 						)}
-						<SectionTitle label="Coordonnées" col={tintSide} />
-						{contactItems(cv).map((item) => (
-							<View key={item.key} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5 }}>
-								{cv.showIcons && <ContactIcon name={item.key} color={cv.iconColor || accent} />}
-								<Text
-									style={{ fontSize: 9.5, lineHeight: 1, color: "#3e4c59", marginLeft: cv.showIcons ? 6 : 0, flex: 1 }}
-								>
-									{item.value}
-								</Text>
-							</View>
-						))}
-					</>
+						<View>
+							{nameBlock(accent)}
+							<ContactList cv={cv} color="#667085" iconColor={cv.iconColor || accent} />
+						</View>
+					</View>
 				),
 			};
 
@@ -832,6 +889,51 @@ const resolveTemplate = (cv: CV): Template => {
 					</View>
 				),
 			};
+
+		case "azurill": {
+			// Single column; each experience/education entry gets a vertical accent bar (timeline look).
+			const azurillMain = makeColumn({
+				side: false,
+				text: "#27364a",
+				muted: "#7b8794",
+				title: accent,
+				rule: accent,
+				heading: "#1f2933",
+				tagBg: "#eef2f6",
+				tagText: "#3e4c59",
+				dotFilled: accent,
+				dotEmpty: "#dde3ea",
+				langBorder: "#f0f2f5",
+				entryBar: accent,
+			});
+			return {
+				structure: "single",
+				page: { paddingHorizontal: 44, paddingVertical: 34, fontFamily: "Helvetica", color: "#1f2933", fontSize: 10 },
+				main: azurillMain,
+				side: azurillMain,
+				Header: () => (
+					<View
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							gap: 16,
+							borderBottomWidth: 1,
+							borderBottomColor: "#e4e7eb",
+							paddingBottom: 12,
+							marginBottom: 2,
+						}}
+					>
+						{cv.photo && (
+							<Image src={cv.photo} style={{ width: 86, height: 86, borderRadius: 43, objectFit: "cover" }} />
+						)}
+						<View style={{ flex: 1 }}>
+							{nameBlock(accent, 25)}
+							<ContactList cv={cv} color="#667085" iconColor={cv.iconColor || accent} />
+						</View>
+					</View>
+				),
+			};
+		}
 
 		case "minimal":
 			return {
