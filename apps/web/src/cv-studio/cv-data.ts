@@ -36,6 +36,13 @@ export const TEMPLATES: { key: TemplateKey; label: string }[] = [
 /** Templates that use the two-column (accent sidebar / banded) layout. */
 export const TWO_COLUMN_TEMPLATES: TemplateKey[] = ["sidebar", "gengar", "meowth", "pikachu", "leafish", "ditto"];
 
+/**
+ * Templates with a PERMANENT side column (the accent/tinted sidebar always shows its pinned
+ * photo + contacts, so its width always matters). Banded templates instead only reserve a side
+ * column when the user has actually placed sections in it.
+ */
+export const SIDEBAR_STRUCTURE_TEMPLATES: TemplateKey[] = ["sidebar", "gengar", "meowth"];
+
 /** The draggable content blocks. The header (name/photo/contacts) is fixed and not a section. */
 export type SectionId = "profile" | "experiences" | "education" | "skills" | "languages" | "interests";
 

@@ -957,11 +957,14 @@ const BandedPage = ({
 	first: boolean;
 	sideWidth: number;
 }) => {
-	const side = (
+	// A banded template only reserves the narrow column when the user actually placed sections in it —
+	// otherwise the main content spans the full width instead of leaving a blank gap.
+	const hasSide = page.sidebar.length > 0;
+	const side = hasSide ? (
 		<View style={{ width: sideWidth }}>
 			<Sections ids={page.sidebar} cv={cv} col={t.side} allowNewPage={false} />
 		</View>
-	);
+	) : null;
 	const main = (
 		<View style={{ flex: 1 }}>
 			<Sections ids={page.main} cv={cv} col={t.main} firstOnPage={first} />
@@ -970,7 +973,15 @@ const BandedPage = ({
 	return (
 		<Page size="A4" style={t.page}>
 			{first && t.Banner?.()}
-			<View style={{ flexDirection: "row", gap: 22, paddingHorizontal: 34, paddingTop: 18, paddingBottom: 24 }}>
+			<View
+				style={{
+					flexDirection: "row",
+					gap: hasSide ? 22 : 0,
+					paddingHorizontal: 34,
+					paddingTop: 18,
+					paddingBottom: 24,
+				}}
+			>
 				{t.sideOnLeft ? (
 					<>
 						{side}

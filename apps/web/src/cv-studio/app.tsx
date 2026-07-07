@@ -21,6 +21,7 @@ import {
 	PALETTE,
 	SECTION_BREAK_LABELS,
 	SECTION_LABELS,
+	SIDEBAR_STRUCTURE_TEMPLATES,
 	sample,
 	storageKey,
 	TEMPLATES,
@@ -220,6 +221,10 @@ function LayoutColumn({
 
 function LayoutEditor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 	const twoCol = TWO_COLUMN_TEMPLATES.includes(cv.template);
+	// The width slider only matters when a side column is actually shown: always for the accent-sidebar
+	// templates, and for banded templates only once the user has placed sections in the side column.
+	const hasSidebarContent = cv.layout.pages.some((page) => page.sidebar.length > 0);
+	const showWidthSlider = SIDEBAR_STRUCTURE_TEMPLATES.includes(cv.template) || (twoCol && hasSidebarContent);
 	const pageCount = cv.layout.pages.length;
 	const [containers, setContainers] = useState<Containers>(() => toContainers(cv.layout.pages));
 	const [activeId, setActiveId] = useState<SectionId | null>(null);
@@ -352,7 +357,7 @@ function LayoutEditor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 			<button type="button" className="cv-add-button" onClick={addPage}>
 				+ Ajouter une page
 			</button>
-			{twoCol && (
+			{showWidthSlider && (
 				<label className="cv-field cv-layout-width">
 					<span>Largeur colonne latérale : {cv.layout.sidebarWidth}%</span>
 					<input
