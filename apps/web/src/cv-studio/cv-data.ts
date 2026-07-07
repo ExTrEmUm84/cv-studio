@@ -58,6 +58,13 @@ export const TWO_COLUMN_TEMPLATES: TemplateKey[] = [
  */
 export const SIDEBAR_STRUCTURE_TEMPLATES: TemplateKey[] = ["sidebar", "gengar", "meowth", "kakuna"];
 
+/**
+ * Single-column templates whose PDF text extracts in a clean, linear reading order — the safest
+ * choice for recruiting ATS parsers. The two-column templates look nicer but interleave the two
+ * columns in the text stream, which some ATS mis-parse.
+ */
+export const isAtsFriendly = (template: TemplateKey): boolean => !TWO_COLUMN_TEMPLATES.includes(template);
+
 /** The draggable content blocks. The header (name/photo/contacts) is fixed and not a section. */
 export type SectionId = "profile" | "experiences" | "education" | "skills" | "languages" | "interests";
 

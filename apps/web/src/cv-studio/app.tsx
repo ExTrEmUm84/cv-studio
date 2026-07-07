@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { PdfCanvasDocument, PdfCanvasPage } from "../features/resume/preview/pdf-canvas";
 import {
 	hydrateCv,
+	isAtsFriendly,
 	normalizeLayout,
 	PALETTE,
 	SECTION_BREAK_LABELS,
@@ -412,10 +413,16 @@ function Editor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 						{TEMPLATES.map((template) => (
 							<option key={template.key} value={template.key}>
 								{template.label}
+								{isAtsFriendly(template.key) ? "  ✓ ATS" : ""}
 							</option>
 						))}
 					</select>
 				</label>
+				<p className={isAtsFriendly(cv.template) ? "cv-hint cv-ats-ok" : "cv-hint cv-ats-warn"}>
+					{isAtsFriendly(cv.template)
+						? "✓ Modèle une colonne : bien lu par les logiciels de recrutement (ATS)."
+						: "⚠ Modèle deux colonnes : plus joli, mais les ATS peuvent mal lire l'ordre. Pour une candidature via un site d'emploi, préfère un modèle « ✓ ATS »."}
+				</p>
 				<label className="cv-field">
 					<span>Couleur principale</span>
 					<input type="color" value={cv.accent} onChange={(event) => set("accent", event.target.value)} />

@@ -668,6 +668,14 @@
 	line-height: 1.45;
 	margin: 0 0 12px;
 }
+.cv-ats-ok {
+	color: #7fd4a8;
+	margin: 4px 0 2px;
+}
+.cv-ats-warn {
+	color: #e6c07a;
+	margin: 4px 0 2px;
+}
 .cv-layout-page {
 	background: rgba(0, 0, 0, 0.16);
 	border-radius: 16px;
