@@ -387,6 +387,14 @@ function Editor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 				});
 		setCv({ ...cv, template, layout });
 	};
+	// ATS readability of the CURRENT template + layout: single/topband is always clean; a permanent
+	// accent sidebar is always two-column; a banded template is clean only while its side column is empty.
+	const atsHasSide = cv.layout.pages.some((page) => page.sidebar.length > 0);
+	const atsState: "ok" | "warn" | "conditional" = !TWO_COLUMN_TEMPLATES.includes(cv.template)
+		? "ok"
+		: SIDEBAR_STRUCTURE_TEMPLATES.includes(cv.template) || atsHasSide
+			? "warn"
+			: "conditional";
 	const onPhoto = (file?: File) => {
 		if (!file) return;
 		const reader = new FileReader();
@@ -418,10 +426,12 @@ function Editor({ cv, setCv }: { cv: CV; setCv: (cv: CV) => void }) {
 						))}
 					</select>
 				</label>
-				<p className={isAtsFriendly(cv.template) ? "cv-hint cv-ats-ok" : "cv-hint cv-ats-warn"}>
-					{isAtsFriendly(cv.template)
+				<p className={atsState === "warn" ? "cv-hint cv-ats-warn" : "cv-hint cv-ats-ok"}>
+					{atsState === "ok"
 						? "✓ Modèle une colonne : bien lu par les logiciels de recrutement (ATS)."
-						: "⚠ Modèle deux colonnes : plus joli, mais les ATS peuvent mal lire l'ordre. Pour une candidature via un site d'emploi, préfère un modèle « ✓ ATS »."}
+						: atsState === "conditional"
+							? "✓ Actuellement en une colonne (colonne latérale vide) → OK pour les ATS. Déplacer des sections dans la colonne latérale le ferait passer à deux colonnes."
+							: "⚠ Deux colonnes : plus joli, mais les ATS peuvent mal lire l'ordre. Pour une candidature via un site d'emploi, préfère un modèle « ✓ ATS »."}
 				</p>
 				<label className="cv-field">
 					<span>Couleur principale</span>
